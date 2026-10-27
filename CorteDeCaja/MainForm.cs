@@ -37,6 +37,10 @@ namespace CorteDeCaja
         public MainForm()
         {
             settings = Storage.LoadSettings();
+            // Sizes below are written for 100% display scaling; WinForms scales them up on high-DPI screens.
+            SuspendLayout();
+            AutoScaleDimensions = new SizeF(96f, 96f);
+            AutoScaleMode = AutoScaleMode.Dpi;
             Text = "Corte de Caja";
             Font = new Font("Segoe UI", 10f);
             StartPosition = FormStartPosition.CenterScreen;
@@ -63,12 +67,14 @@ namespace CorteDeCaja
             firma.Changed += (s, e) => Changed();
 
             ShowCorte(new Corte());
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         static Label TotalLabel() => new Label
         {
-            AutoSize = false, Width = 120, Height = 26, TextAlign = ContentAlignment.MiddleRight,
-            Font = new Font("Segoe UI", 11f, FontStyle.Bold), Anchor = AnchorStyles.Left,
+            // Auto-sized and right-anchored so it lines up under the amount boxes at any display scaling.
+            AutoSize = true, Font = new Font("Segoe UI", 11f, FontStyle.Bold), Anchor = AnchorStyles.Right,
         };
 
         Control BuildHeader()
@@ -149,6 +155,10 @@ namespace CorteDeCaja
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             grid.EnableHeadersVisualStyles = false;
+            // Size header and rows from the font; fixed pixel heights don't follow display scaling.
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+            grid.DefaultCellStyle.Padding = new Padding(2, 3, 2, 3);
             grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Numero", HeaderText = "Número de cheque", FillWeight = 60 });
             grid.Columns.Add(new DataGridViewTextBoxColumn
             {

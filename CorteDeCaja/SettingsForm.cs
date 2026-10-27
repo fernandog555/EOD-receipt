@@ -8,6 +8,9 @@ namespace CorteDeCaja
     {
         public SettingsForm(AppSettings s)
         {
+            SuspendLayout();
+            AutoScaleDimensions = new SizeF(96f, 96f);
+            AutoScaleMode = AutoScaleMode.Dpi;
             Text = "Configuración";
             Font = new Font("Segoe UI", 10f);
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -47,6 +50,8 @@ namespace CorteDeCaja
             AcceptButton = ok;
             CancelButton = cancel;
             Controls.Add(t);
+            ResumeLayout(false);
+            PerformLayout();
 
             ok.Click += (o, e) =>
             {

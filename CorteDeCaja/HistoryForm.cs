@@ -20,6 +20,9 @@ namespace CorteDeCaja
         public HistoryForm(AppSettings settings)
         {
             this.settings = settings;
+            SuspendLayout();
+            AutoScaleDimensions = new SizeF(96f, 96f);
+            AutoScaleMode = AutoScaleMode.Dpi;
             Text = "Historial de cortes";
             Font = new Font("Segoe UI", 10f);
             Size = new Size(1050, 600);
@@ -31,7 +34,8 @@ namespace CorteDeCaja
                 ("Fecha", 100, false), ("Día", 110, false), ("Agente", 160, false), ("Entradas", 110, true),
                 ("Desglose", 110, true), ("# Cheques", 85, true), ("Total cheques", 120, true), ("Estado", 140, false), ("Guardado", 160, false),
             })
-                list.Columns.Add(title, width, right ? HorizontalAlignment.Right : HorizontalAlignment.Left);
+                // Auto-scaling doesn't reach ListView columns, so scale them by hand.
+                list.Columns.Add(title, LogicalToDeviceUnits(width), right ? HorizontalAlignment.Right : HorizontalAlignment.Left);
             list.DoubleClick += (s, e) => OpenSelected();
 
             var top = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(6) };
@@ -57,6 +61,8 @@ namespace CorteDeCaja
             Controls.Add(top);
             Controls.Add(bottom);
             Reload();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         void Reload()

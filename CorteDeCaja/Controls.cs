@@ -81,7 +81,7 @@ namespace CorteDeCaja
     /// <summary>Signature box: sign with the mouse, a touchscreen or a pen.</summary>
     public class SignaturePad : Control
     {
-        readonly Bitmap ink;
+        Bitmap ink;
         Point? last;
 
         public bool HasInk { get; private set; }
@@ -89,12 +89,28 @@ namespace CorteDeCaja
 
         public SignaturePad(int width, int height)
         {
-            Size = new Size(width, height);
             DoubleBuffered = true;
             BackColor = Color.White;
             Cursor = Cursors.Cross;
-            ink = new Bitmap(width, height);
-            Clear(false);
+            Size = new Size(width, height);
+        }
+
+        float DpiScale => DeviceDpi / 96f;
+
+        // The pad grows on high-DPI screens, so keep the ink bitmap matched to the control size.
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            if (Width <= 0 || Height <= 0 || (ink != null && ink.Size == Size)) return;
+            var old = ink;
+            ink = new Bitmap(Width, Height);
+            using (var g = Graphics.FromImage(ink))
+            {
+                g.Clear(Color.White);
+                if (old != null) g.DrawImage(old, 0, 0, Width, Height);
+            }
+            old?.Dispose();
+            Invalidate();
         }
 
         public void Clear(bool raise = true)
@@ -124,7 +140,11 @@ namespace CorteDeCaja
                 using (var ms = new MemoryStream(Convert.FromBase64String(b64)))
                 using (var img = Image.FromStream(ms))
                 using (var g = Graphics.FromImage(ink))
-                    g.DrawImage(img, 0, 0, img.Width, img.Height);
+                {
+                    // A signature saved at a different screen scaling is fitted into the current pad.
+                    float k = Math.Min((float)ink.Width / img.Width, (float)ink.Height / img.Height);
+                    g.DrawImage(img, 0, 0, img.Width * k, img.Height * k);
+                }
                 HasInk = true;
             }
             catch { }
@@ -189,7 +209,7 @@ namespace CorteDeCaja
         void Stroke(Point a, Point b)
         {
             using (var g = Graphics.FromImage(ink))
-            using (var pen = new Pen(Color.Black, 2.5f))
+            using (var pen = new Pen(Color.Black, 2.5f * DpiScale))
             {
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 pen.StartCap = pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
@@ -204,12 +224,12 @@ namespace CorteDeCaja
         {
             var g = e.Graphics;
             g.DrawImage(ink, 0, 0);
-            int y = Height - 28;
-            using (var pen = new Pen(Color.Silver)) g.DrawLine(pen, 28, y, Width - 16, y);
-            using (var f = new Font("Segoe UI", 14f)) g.DrawString("X", f, Brushes.Silver, 8, y - 26);
+            float k = DpiScale, y = Height - 28 * k;
+            using (var pen = new Pen(Color.Silver)) g.DrawLine(pen, 28 * k, y, Width - 16 * k, y);
+            using (var f = new Font("Segoe UI", 14f)) g.DrawString("X", f, Brushes.Silver, 8 * k, y - 26 * k);
             if (!HasInk)
                 using (var f = new Font("Segoe UI", 9f))
-                    g.DrawString("Firme aquí con el mouse o el dedo", f, Brushes.Silver, 30, y + 4);
+                    g.DrawString("Firme aquí con el mouse o el dedo", f, Brushes.Silver, 30 * k, y + 4 * k);
             g.DrawRectangle(Pens.Gray, 0, 0, Width - 1, Height - 1);
         }
     }

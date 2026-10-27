@@ -52,11 +52,14 @@ namespace CorteDeCaja
             using (var f = new MainForm())
             {
                 f.ShowCorte(c);
+                f.TopMost = true;
                 f.Show();
+                f.Refresh();
                 Application.DoEvents();
+                // Capture the screen rather than DrawToBitmap, which draws native text boxes at the wrong size on high-DPI screens.
                 using (var b = new System.Drawing.Bitmap(f.Width, f.Height))
                 {
-                    f.DrawToBitmap(b, new System.Drawing.Rectangle(0, 0, f.Width, f.Height));
+                    using (var g = System.Drawing.Graphics.FromImage(b)) g.CopyFromScreen(f.Location, System.Drawing.Point.Empty, f.Size);
                     b.Save(Path.Combine(dir, "ventana.png"), ImageFormat.Png);
                 }
                 f.Close();
