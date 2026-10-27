@@ -12,7 +12,7 @@ Small Windows desktop app for the end-of-day cash count (corte de caja). Agents 
 
 **Historial** lists every saved corte (who did it, totals, number and total of cheques). From there you can reopen, reprint or delete one.
 
-**Configuración** sets the business name printed on the receipt, the thermal and sheet printers, the roll width (80 or 58 mm) and an optional print preview. If no printer is set, the app asks the first time and remembers it.
+**Configuración** sets the business name printed on the receipt, the thermal and sheet printers, and the roll width (80 or 58 mm). Printing opens a preview window where you can pick the printer; the last printer used for each type is remembered. Check "Imprimir directo" to skip the preview and print straight to that printer.
 
 Data is saved as one JSON file per corte in `Documents\CorteDeCaja\cortes`.
 

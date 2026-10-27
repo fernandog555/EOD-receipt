@@ -77,7 +77,8 @@ namespace CorteDeCaja
         [DataMember] public string ImpresoraTermica = "";
         [DataMember] public string ImpresoraHoja = "";
         [DataMember] public int AnchoTermicaMm = 80;
-        [DataMember] public bool VistaPrevia;
+        // Off by default: every print shows the preview window first.
+        [DataMember] public bool ImprimirDirecto;
 
         [OnDeserialized]
         void FixNulls(StreamingContext _)

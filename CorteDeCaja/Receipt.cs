@@ -46,29 +46,37 @@ namespace CorteDeCaja
             using (var doc = new PrintDocument())
             {
                 doc.DocumentName = "Corte de caja " + c.Fecha;
-                var printer = thermal ? s.ImpresoraTermica : s.ImpresoraHoja;
-                if (printer.Length > 0) doc.PrinterSettings.PrinterName = printer;
-
-                if (printer.Length == 0 || !doc.PrinterSettings.IsValid)
+                doc.OriginAtMargins = false;
+                doc.BeginPrint += (o, e) =>
                 {
-                    using (var dlg = new PrintDialog { Document = doc, UseEXDialog = true })
+                    r.next = 0;
+                    r.preview = doc.PrintController is PreviewPrintController;
+                };
+                doc.PrintPage += r.OnPrintPage;
+
+                var saved = thermal ? s.ImpresoraTermica : s.ImpresoraHoja;
+                if (saved.Length > 0) doc.PrinterSettings.PrinterName = saved;
+                bool known = saved.Length > 0 && doc.PrinterSettings.IsValid;
+                if (!known) doc.PrinterSettings = new PrinterSettings(); // Windows default printer
+                r.ApplyPageSettings(doc);
+
+                // Windows 11's own print dialog can't preview for this kind of app, so use our own window.
+                if (!known || !s.ImprimirDirecto)
+                {
+                    var title = thermal ? "Vista previa — recibo térmico" : "Vista previa — hoja";
+                    using (var f = new PrintPreviewForm(doc, r.ApplyPageSettings, title))
+                        if (f.ShowDialog(owner) != DialogResult.OK) return;
+                    if (doc.PrinterSettings.PrinterName != saved)
                     {
-                        if (dlg.ShowDialog(owner) != DialogResult.OK) return;
+                        if (thermal) s.ImpresoraTermica = doc.PrinterSettings.PrinterName;
+                        else s.ImpresoraHoja = doc.PrinterSettings.PrinterName;
+                        Storage.SaveSettings(s);
                     }
-                    if (thermal) s.ImpresoraTermica = doc.PrinterSettings.PrinterName;
-                    else s.ImpresoraHoja = doc.PrinterSettings.PrinterName;
-                    Storage.SaveSettings(s);
                 }
 
-                r.preview = s.VistaPrevia;
-                r.Setup(doc);
                 try
                 {
-                    if (s.VistaPrevia)
-                        using (var dlg = new PrintPreviewDialog { Document = doc, Width = 800, Height = 900, UseAntiAlias = true })
-                            dlg.ShowDialog(owner);
-                    else
-                        doc.Print();
+                    doc.Print();
                 }
                 catch (Exception ex)
                 {
@@ -95,11 +103,9 @@ namespace CorteDeCaja
             return bmp;
         }
 
-        void Setup(PrintDocument doc)
+        // Re-applied whenever the printer changes, since switching printers resets the page settings.
+        void ApplyPageSettings(PrintDocument doc)
         {
-            doc.OriginAtMargins = false;
-            doc.BeginPrint += (s, e) => next = 0;
-            doc.PrintPage += OnPrintPage;
             if (thermal)
             {
                 // One long page sized to the content; roll printers cut after the last line.

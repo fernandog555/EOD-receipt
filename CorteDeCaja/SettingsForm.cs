@@ -25,7 +25,7 @@ namespace CorteDeCaja
             var ancho = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
             ancho.Items.AddRange(new object[] { "80 mm", "58 mm" });
             ancho.SelectedIndex = s.AnchoTermicaMm == 58 ? 1 : 0;
-            var preview = new CheckBox { Text = "Mostrar vista previa antes de imprimir", Checked = s.VistaPrevia, AutoSize = true };
+            var direct = new CheckBox { Text = "Imprimir directo, sin vista previa", Checked = s.ImprimirDirecto, AutoSize = true };
 
             var t = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Padding = new Padding(12) };
             void Row(string label, Control c)
@@ -38,7 +38,7 @@ namespace CorteDeCaja
             Row("Impresora térmica:", termica);
             Row("Ancho del papel térmico:", ancho);
             Row("Impresora de hojas:", hoja);
-            Row("", preview);
+            Row("", direct);
             Row("Los cortes se guardan en:", new Label { Text = Storage.CortesDir, AutoSize = true, ForeColor = Color.DimGray });
 
             var ok = new Button { Text = "Guardar", AutoSize = true, DialogResult = DialogResult.OK };
@@ -59,7 +59,7 @@ namespace CorteDeCaja
                 s.ImpresoraTermica = termica.SelectedIndex > 0 ? (string)termica.SelectedItem : "";
                 s.ImpresoraHoja = hoja.SelectedIndex > 0 ? (string)hoja.SelectedItem : "";
                 s.AnchoTermicaMm = ancho.SelectedIndex == 1 ? 58 : 80;
-                s.VistaPrevia = preview.Checked;
+                s.ImprimirDirecto = direct.Checked;
                 Storage.SaveSettings(s);
             };
         }
@@ -67,7 +67,7 @@ namespace CorteDeCaja
         static ComboBox PrinterCombo(string selected)
         {
             var c = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 320 };
-            c.Items.Add("(preguntar al imprimir)");
+            c.Items.Add("(elegir al imprimir)");
             foreach (string p in PrinterSettings.InstalledPrinters) c.Items.Add(p);
             c.SelectedIndex = System.Math.Max(0, c.Items.IndexOf(selected));
             return c;
