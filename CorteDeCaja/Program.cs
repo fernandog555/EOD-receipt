@@ -54,8 +54,20 @@ namespace CorteDeCaja
                 f.ShowCorte(c);
                 f.TopMost = true;
                 f.Show();
+                // Let the window finish its open animation before capturing it.
+                for (int i = 0; i < 20; i++) { Application.DoEvents(); System.Threading.Thread.Sleep(50); }
                 f.Refresh();
                 Application.DoEvents();
+                using (var w = new StreamWriter(Path.Combine(dir, "layout.txt")))
+                {
+                    w.WriteLine("DeviceDpi=" + f.DeviceDpi + " Size=" + f.Size);
+                    void Dump(System.Windows.Forms.Control c, int depth)
+                    {
+                        w.WriteLine(new string(' ', depth * 2) + c.GetType().Name + " " + c.Bounds + " pad=" + c.Padding + " mar=" + c.Margin + (c is System.Windows.Forms.TextBox t ? " font=" + t.Font.Height + " text=" + t.Text : ""));
+                        foreach (System.Windows.Forms.Control k in c.Controls) Dump(k, depth + 1);
+                    }
+                    Dump(f, 0);
+                }
                 // Capture the screen rather than DrawToBitmap, which draws native text boxes at the wrong size on high-DPI screens.
                 using (var b = new System.Drawing.Bitmap(f.Width, f.Height))
                 {
