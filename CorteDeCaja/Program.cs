@@ -7,6 +7,7 @@ namespace CorteDeCaja
 {
     static class Program
     {
+        internal static string DemoDir;
         [STAThread]
         static void Main(string[] args)
         {
@@ -24,6 +25,7 @@ namespace CorteDeCaja
         /// <summary>Writes PNGs of the main window and both receipt layouts, filled with the paper form's example.</summary>
         static void RenderDemo(string dir)
         {
+            DemoDir = dir;
             Directory.CreateDirectory(dir);
             var c = new Corte
             {

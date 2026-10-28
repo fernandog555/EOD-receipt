@@ -444,6 +444,7 @@ namespace CorteDeCaja
         void Changed()
         {
             if (loading) return;
+            if (Program.DemoDir != null && !dirty) System.IO.File.AppendAllText(System.IO.Path.Combine(Program.DemoDir, "dirty-trace.txt"), Environment.StackTrace + "\n----\n");
             dirty = true;
             SetSaveStatus(SaveState.Unsaved);
             UpdateTotals();
