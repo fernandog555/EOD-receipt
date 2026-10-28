@@ -88,7 +88,7 @@ namespace CorteDeCaja
                 list.Items.Add(item);
             }
             list.EndUpdate();
-            summary.Text = cortes.Count + Lang.T(" cortes · ", " counts · ") + Lang.Checks(cortes.Sum(c => c.Cheques.Count)) + Lang.T(" por ", " for ") + Fmt.Money(cortes.Sum(c => c.TotalCheques));
+            summary.Text = Lang.Counts(cortes.Count) + " · " + Lang.Checks(cortes.Sum(c => c.Cheques.Count)) + Lang.T(" por ", " for ") + Fmt.Money(cortes.Sum(c => c.TotalCheques));
         }
 
         Corte Current()

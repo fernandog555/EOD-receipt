@@ -45,5 +45,7 @@ namespace CorteDeCaja
             T("Sobran ", "Over ") + Fmt.Money(c.Diferencia);
 
         public static string Checks(int n) => n + (n == 1 ? T(" cheque", " check") : T(" cheques", " checks"));
+
+        public static string Counts(int n) => n + (n == 1 ? T(" corte", " count") : T(" cortes", " counts"));
     }
 }
