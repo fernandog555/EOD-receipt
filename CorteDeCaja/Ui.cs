@@ -274,13 +274,26 @@ namespace CorteDeCaja
 
         void ShowCalendar()
         {
-            if (drop != null && drop.Visible) { drop.Close(); return; }
-            var cal = new MonthCalendar { MaxSelectionCount = 1, SelectionStart = date, ShowTodayCircle = true, Margin = Padding.Empty };
-            cal.DateSelected += (s, e) => { Value = e.Start; drop.Close(); };
-            drop = new ToolStripDropDown { Padding = Padding.Empty, DropShadowEnabled = true };
-            drop.Items.Add(new ToolStripControlHost(cal) { Margin = Padding.Empty, Padding = Padding.Empty, AutoSize = false, Size = cal.Size });
+            if (drop != null && !drop.IsDisposed && drop.Visible) { drop.Close(); return; }
+            var cal = new MonthPicker(date);
+            cal.Picked += (s, d) => { Value = d; drop.Close(); Focus(); };
+            cal.Cancelled += (s, e) => { drop.Close(); Focus(); };
+            drop = new ToolStripDropDown { Padding = Padding.Empty, DropShadowEnabled = true, Renderer = new PopupRenderer() };
+            var host = new ToolStripControlHost(cal) { Margin = Padding.Empty, Padding = Padding.Empty, AutoSize = false, Size = cal.Size };
+            drop.Items.Add(host);
             drop.Closed += (s, e) => { var d = (ToolStripDropDown)s; BeginInvoke((Action)d.Dispose); Invalidate(); };
-            drop.Show(this, new Point(0, Height + Dpi.S(2)));
+            drop.Opened += (s, e) => cal.Focus();
+            drop.Show(this, new Point(0, Height + Dpi.S(4)));
+        }
+
+        /// <summary>Plain 1px border for the popup instead of the default menu frame.</summary>
+        class PopupRenderer : ToolStripRenderer
+        {
+            protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+            {
+                using (var pen = new Pen(Theme.BorderStrong))
+                    e.Graphics.DrawRectangle(pen, 0, 0, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1);
+            }
         }
 
         protected override void OnPaintBackground(PaintEventArgs e) { }
@@ -297,6 +310,203 @@ namespace CorteDeCaja
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
             TextRenderer.DrawText(g, "", Theme.Icons, new Rectangle(Width - pad - icon, 0, icon, Height), Theme.Muted,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        }
+    }
+
+    /// <summary>
+    /// Month calendar drawn in the app's style: Spanish month and weekday names, selected day in a blue circle,
+    /// today ringed, a "Hoy" button. Keys: arrows move a day/week, Re Pág / Av Pág a month, Enter picks, Esc closes.
+    /// </summary>
+    public class MonthPicker : Control
+    {
+        static readonly System.Globalization.CultureInfo Es = new System.Globalization.CultureInfo("es-MX");
+        const int Cell = 38, Pad = 12, HeadH = 44, WeekH = 26, FootH = 46;
+
+        DateTime month, cursor;
+        readonly DateTime selected;
+        int hoverDay = -1;   // index 0..41 in the grid, or -1
+        string hoverBtn;     // "prev", "next", "hoy" or null
+
+        public event EventHandler<DateTime> Picked;
+        public event EventHandler Cancelled;
+
+        public MonthPicker(DateTime selected)
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.Selectable, true);
+            this.selected = selected.Date;
+            cursor = selected.Date;
+            month = new DateTime(selected.Year, selected.Month, 1);
+            BackColor = Color.White;
+            Font = Theme.Body;
+            Size = Dpi.Sz(Pad * 2 + Cell * 7, Pad + HeadH + WeekH + Cell * 6 + FootH);
+        }
+
+        DayOfWeek FirstDay => Es.DateTimeFormat.FirstDayOfWeek;
+        DateTime GridStart => month.AddDays(-(((int)month.DayOfWeek - (int)FirstDay + 7) % 7));
+
+        Rectangle DayRect(int i) => new Rectangle(Dpi.S(Pad + (i % 7) * Cell), Dpi.S(Pad + HeadH + WeekH + (i / 7) * Cell), Dpi.S(Cell), Dpi.S(Cell));
+        Rectangle PrevRect => new Rectangle(Width - Dpi.S(Pad + 72), Dpi.S(Pad + 4), Dpi.S(34), Dpi.S(32));
+        Rectangle NextRect => new Rectangle(Width - Dpi.S(Pad + 36), Dpi.S(Pad + 4), Dpi.S(34), Dpi.S(32));
+        Rectangle HoyRect
+        {
+            get
+            {
+                int w = TextRenderer.MeasureText("Hoy", Theme.Button).Width + Dpi.S(24);
+                return new Rectangle(Dpi.S(Pad), Height - Dpi.S(FootH - 6), w, Dpi.S(32));
+            }
+        }
+
+        int HitDay(Point p)
+        {
+            for (int i = 0; i < 42; i++) if (DayRect(i).Contains(p)) return i;
+            return -1;
+        }
+
+        string HitBtn(Point p) => PrevRect.Contains(p) ? "prev" : NextRect.Contains(p) ? "next" : HoyRect.Contains(p) ? "hoy" : null;
+
+        void ShowMonth(DateTime m) { month = new DateTime(m.Year, m.Month, 1); Invalidate(); }
+
+        void MoveCursor(DateTime d)
+        {
+            cursor = d.Date;
+            if (cursor.Year != month.Year || cursor.Month != month.Month) month = new DateTime(cursor.Year, cursor.Month, 1);
+            Invalidate();
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            int d = HitDay(e.Location); var b = HitBtn(e.Location);
+            if (d != hoverDay || b != hoverBtn) { hoverDay = d; hoverBtn = b; Invalidate(); }
+            Cursor = d >= 0 || b != null ? Cursors.Hand : Cursors.Default;
+        }
+
+        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hoverDay = -1; hoverBtn = null; Invalidate(); }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (e.Button != MouseButtons.Left) return;
+            switch (HitBtn(e.Location))
+            {
+                case "prev": ShowMonth(month.AddMonths(-1)); return;
+                case "next": ShowMonth(month.AddMonths(1)); return;
+                case "hoy": Picked?.Invoke(this, DateTime.Today); return;
+            }
+            int i = HitDay(e.Location);
+            if (i >= 0) Picked?.Invoke(this, GridStart.AddDays(i));
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            base.OnMouseWheel(e);
+            ShowMonth(month.AddMonths(e.Delta > 0 ? -1 : 1));
+        }
+
+        protected override bool IsInputKey(Keys k)
+        {
+            switch (k & Keys.KeyCode)
+            {
+                case Keys.Left: case Keys.Right: case Keys.Up: case Keys.Down: case Keys.Enter: case Keys.Escape: case Keys.PageUp: case Keys.PageDown: case Keys.Home:
+                    return true;
+            }
+            return base.IsInputKey(k);
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            switch (e.KeyCode)
+            {
+                case Keys.Left: MoveCursor(cursor.AddDays(-1)); break;
+                case Keys.Right: MoveCursor(cursor.AddDays(1)); break;
+                case Keys.Up: MoveCursor(cursor.AddDays(-7)); break;
+                case Keys.Down: MoveCursor(cursor.AddDays(7)); break;
+                case Keys.PageUp: MoveCursor(cursor.AddMonths(-1)); break;
+                case Keys.PageDown: MoveCursor(cursor.AddMonths(1)); break;
+                case Keys.Home: MoveCursor(DateTime.Today); break;
+                case Keys.Enter: Picked?.Invoke(this, cursor); break;
+                case Keys.Escape: Cancelled?.Invoke(this, EventArgs.Empty); break;
+                default: return;
+            }
+            e.Handled = e.SuppressKeyPress = true;
+        }
+
+        static string Cap(string s) => s.Length == 0 ? s : char.ToUpper(s[0], Es) + s.Substring(1);
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(BackColor);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            var center = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding;
+
+            // Header: "Octubre 2026" and the two arrows.
+            var title = Cap(month.ToString("MMMM", Es)) + " " + month.Year;
+            TextRenderer.DrawText(g, title, Theme.CardTitle, new Rectangle(Dpi.S(Pad + 6), Dpi.S(Pad), Width, Dpi.S(40)), Theme.Text,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            foreach (var (key, rect, glyph) in new[] { ("prev", PrevRect, "\uE76B"), ("next", NextRect, "\uE76C") })
+            {
+                if (hoverBtn == key)
+                    using (var path = Theme.Round(rect, Dpi.S(6)))
+                    using (var b = new SolidBrush(Theme.Hover)) g.FillPath(b, path);
+                TextRenderer.DrawText(g, glyph, Theme.Icons, rect, Theme.Text, center);
+            }
+
+            // Weekday initials, starting on the culture's first day.
+            var abbrev = Es.DateTimeFormat.ShortestDayNames;
+            for (int c = 0; c < 7; c++)
+            {
+                var name = Cap(abbrev[((int)FirstDay + c) % 7].TrimEnd('.'));
+                var r = new Rectangle(Dpi.S(Pad + c * Cell), Dpi.S(Pad + HeadH), Dpi.S(Cell), Dpi.S(WeekH));
+                TextRenderer.DrawText(g, name, Theme.FieldLabel, r, Theme.Muted, center);
+            }
+
+            // Day grid.
+            var start = GridStart;
+            int inset = Dpi.S(3);
+            for (int i = 0; i < 42; i++)
+            {
+                var day = start.AddDays(i);
+                var r = DayRect(i);
+                var circle = new Rectangle(r.X + inset, r.Y + inset, r.Width - inset * 2, r.Height - inset * 2);
+                bool inMonth = day.Month == month.Month;
+                bool isSel = day == selected, isToday = day == DateTime.Today, isCursor = day == cursor && Focused;
+                var fore = inMonth ? Theme.Text : Theme.Hint;
+
+                if (isSel)
+                {
+                    using (var b = new SolidBrush(i == hoverDay ? Theme.AccentHover : Theme.Accent)) g.FillEllipse(b, circle);
+                    fore = Color.White;
+                }
+                else if (i == hoverDay)
+                    using (var b = new SolidBrush(Theme.Hover)) g.FillEllipse(b, circle);
+
+                if (isToday && !isSel)
+                {
+                    using (var pen = new Pen(Theme.Accent, 1.5f * Dpi.K)) g.DrawEllipse(pen, circle);
+                    fore = Theme.Accent;
+                }
+                if (isCursor && !isSel)
+                    using (var pen = new Pen(Theme.BorderStrong, 1.5f * Dpi.K) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dot }) g.DrawEllipse(pen, circle);
+
+                var font = isSel || isToday ? Theme.Button : Theme.Body;
+                TextRenderer.DrawText(g, day.Day.ToString(), font, r, fore, center);
+            }
+
+            // Footer: separator, "Hoy" button and the selected date spelled out.
+            int fy = Height - Dpi.S(FootH);
+            using (var pen = new Pen(Theme.Border)) g.DrawLine(pen, Dpi.S(Pad), fy, Width - Dpi.S(Pad), fy);
+            var hoy = HoyRect;
+            using (var path = Theme.Round(hoy, Dpi.S(6)))
+            {
+                using (var b = new SolidBrush(hoverBtn == "hoy" ? Theme.AccentSoft : Color.White)) g.FillPath(b, path);
+                using (var pen = new Pen(Theme.BorderStrong)) g.DrawPath(pen, path);
+            }
+            TextRenderer.DrawText(g, "Hoy", Theme.Button, hoy, Theme.Accent, center);
+            var sel = selected.ToString("d 'de' MMM yyyy", Es).Replace(".", "");
+            TextRenderer.DrawText(g, sel, Theme.Small, new Rectangle(hoy.Right, hoy.Y, Width - hoy.Right - Dpi.S(Pad), hoy.Height), Theme.Muted,
+                TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
     }
 
