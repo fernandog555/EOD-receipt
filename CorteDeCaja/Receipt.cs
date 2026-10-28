@@ -230,7 +230,7 @@ namespace CorteDeCaja
             Rule();
 
             Text("ENTRADAS", isBold: true);
-            Line("W" + (c.WNota.Trim().Length > 0 ? "   X " + c.WNota.Trim() : ""), c.W);
+            Line("Caja Negra" + (c.WNota.Trim().Length > 0 ? "   X " + c.WNota.Trim() : ""), c.W);
             Line("+ Envíos", c.Envios);
             Line("Otro ingreso", c.OtroIngreso);
             Note(c.OtroIngresoNota);

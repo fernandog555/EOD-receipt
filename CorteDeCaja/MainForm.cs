@@ -8,31 +8,38 @@ namespace CorteDeCaja
 {
     public class MainForm : Form
     {
-        static readonly Color Accent = Color.FromArgb(0, 90, 160);
+        // Layout grid, in pixels at 100% scaling (WinForms scales everything on high-DPI screens).
+        // Left column holds the money, right column the cheques and signature; cards add 16px padding each side.
+        const int LeftW = 560, RightW = 420, Gap = 16, CardPadX = 16;
+        const int LabelW = 112, AmountW = 132, NoteW = LeftW - LabelW - 8 - AmountW - 8;
+
+        static readonly CultureInfo Es = new CultureInfo("es-MX");
 
         readonly AppSettings settings;
         Corte current;
         bool dirty, loading;
 
-        readonly DateTimePicker dtFecha = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MM/dd/yyyy", Width = 130 };
-        readonly Label lblDia = new Label { AutoSize = true, Font = new Font("Segoe UI", 14f, FontStyle.Bold), ForeColor = Accent, Margin = new Padding(10, 2, 20, 0) };
-        readonly NoteBox txtAgente = new NoteBox("Nombre del agente", 200);
+        readonly DateField dtFecha = new DateField(160);
+        readonly Label lblDia = Theme.MakeLabel("", Theme.Body, Theme.Muted, new Padding(0));
+        readonly Label lblGuardado = Theme.MakeLabel("", Theme.Body, Theme.Muted, new Padding(0));
+        readonly NoteBox txtAgente = new NoteBox("Nombre del agente");
 
         readonly MoneyBox mW = new MoneyBox(), mEnvios = new MoneyBox(), mOtroIng = new MoneyBox();
-        readonly NoteBox nW = new NoteBox("X (iniciales / nota)"), nOtroIng = new NoteBox("¿Qué fue? (obligatorio)", 366);
+        readonly NoteBox nW = new NoteBox("X (iniciales / nota)"), nOtroIng = new NoteBox("¿Qué fue? (obligatorio)");
 
         readonly MoneyBox mCash = new MoneyBox(), mMaquina = new MoneyBox(), mDevol = new MoneyBox(), mCompra = new MoneyBox(), mOtros = new MoneyBox();
-        readonly TextBox tCheques = new TextBox { ReadOnly = true, TabStop = false, TextAlign = HorizontalAlignment.Right, Width = 120 };
-        readonly Label lblChequesInfo = new Label { AutoSize = true, ForeColor = Color.DimGray, Anchor = AnchorStyles.Left };
+        readonly TextBox tCheques = new TextBox { ReadOnly = true, TabStop = false, TextAlign = HorizontalAlignment.Right, BackColor = Theme.ReadOnlyFill, ForeColor = Theme.Text };
+        readonly Label lblChequesInfo = Theme.MakeLabel("", Theme.Small, Theme.Muted, new Padding(0));
         readonly NoteBox nDevPersona = new NoteBox("Nombre de la persona"), nDevAgencia = new NoteBox("Agencia");
-        readonly NoteBox nCompra = new NoteBox("¿Qué se compró? (ej. papel)", 366), nOtros = new NoteBox("¿Qué fue? (obligatorio)", 366);
+        readonly NoteBox nCompra = new NoteBox("¿Qué se compró? (ej. papel)"), nOtros = new NoteBox("¿Qué fue? (obligatorio)");
 
-        readonly Label lblTotEntradas = TotalLabel(), lblTotDesglose = TotalLabel();
-        readonly Label lblEstado = new Label { AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold), Margin = new Padding(3, 10, 3, 3) };
-        readonly Label lblGuardado = new Label { AutoSize = true, ForeColor = Color.DimGray, Anchor = AnchorStyles.Left, Margin = new Padding(12, 0, 0, 0) };
+        readonly Label lblTotEntradas = HeaderTotal(), lblTotDesglose = HeaderTotal();
+        readonly Label statEntradas = StatValue(), statDesglose = StatValue(), statDif = StatValue();
+        readonly StatusPill pill = new StatusPill { Size = new Size(200, 42), Margin = new Padding(0, 1, 0, 1) };
+        readonly Label lblChequesCount = new Label { AutoSize = false, Size = new Size(200, 30), Location = new Point(RightW - 200, 0), TextAlign = ContentAlignment.MiddleRight, ForeColor = Theme.Muted };
 
         readonly DataGridView grid = new DataGridView();
-        readonly SignaturePad firma = new SignaturePad(440, 150);
+        readonly SignaturePad firma = new SignaturePad(RightW, 136);
 
         public MainForm()
         {
@@ -42,28 +49,31 @@ namespace CorteDeCaja
             AutoScaleDimensions = new SizeF(96f, 96f);
             AutoScaleMode = AutoScaleMode.Dpi;
             Text = "Corte de Caja";
-            Font = new Font("Segoe UI", 10f);
+            Font = Theme.Body;
+            ForeColor = Theme.Text;
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            BackColor = Color.White;
+            BackColor = Theme.Page;
 
-            var root = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 3, Padding = new Padding(12), Location = new Point(0, 0) };
-            root.Controls.Add(BuildHeader(), 0, 0);
-            root.SetColumnSpan(root.Controls[0], 2);
-            root.Controls.Add(BuildMoneyTable(), 0, 1);
-            root.Controls.Add(BuildRightSide(), 1, 1);
-            root.Controls.Add(BuildButtons(), 0, 2);
-            root.SetColumnSpan(root.Controls[3], 2);
+            var root = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 3, Padding = new Padding(16, 12, 16, 4), Location = new Point(0, 0) };
+            var header = BuildHeader();
+            root.Controls.Add(header, 0, 0);
+            root.SetColumnSpan(header, 2);
+            root.Controls.Add(BuildLeft(), 0, 1);
+            root.Controls.Add(BuildRight(), 1, 1);
+            var footer = BuildFooter();
+            root.Controls.Add(footer, 0, 2);
+            root.SetColumnSpan(footer, 2);
             Controls.Add(root);
 
             foreach (var box in new[] { mW, mEnvios, mOtroIng, mCash, mMaquina, mDevol, mCompra, mOtros })
                 box.TextChanged += (s, e) => Changed();
             foreach (var box in new TextBox[] { txtAgente, nW, nOtroIng, nDevPersona, nDevAgencia, nCompra, nOtros })
                 box.TextChanged += (s, e) => Changed();
-            dtFecha.ValueChanged += (s, e) => { lblDia.Text = "DÍA " + Fmt.Day(dtFecha.Value); Changed(); };
+            dtFecha.ValueChanged += (s, e) => { lblDia.Text = DayText(dtFecha.Value); Changed(); };
             firma.Changed += (s, e) => Changed();
 
             ShowCorte(new Corte());
@@ -71,100 +81,232 @@ namespace CorteDeCaja
             PerformLayout();
         }
 
-        static Label TotalLabel() => new Label
+        protected override void OnHandleCreated(EventArgs e)
         {
-            // Auto-sized and right-anchored so it lines up under the amount boxes at any display scaling.
-            AutoSize = true, Font = new Font("Segoe UI", 11f, FontStyle.Bold), Anchor = AnchorStyles.Right,
+            base.OnHandleCreated(e);
+            Theme.TintTitleBar(this);
+        }
+
+        static Label HeaderTotal() => new Label
+        {
+            AutoSize = false, Size = new Size(240, 44), Location = new Point(LeftW - 240, 0),
+            TextAlign = ContentAlignment.MiddleRight, Font = Theme.Total, ForeColor = Theme.Text,
         };
 
+        static Label StatValue() => new Label { AutoSize = true, Font = Theme.Stat, ForeColor = Theme.Text, Location = new Point(0, 18) };
+
+        static string DayText(DateTime d)
+        {
+            var t = d.ToString("dddd, d 'de' MMMM 'de' yyyy", Es);
+            return char.ToUpper(t[0], Es) + t.Substring(1);
+        }
+
+        static Field F(TextBox box, int width, int rightMargin = 8)
+        {
+            var f = new Field(box, width);
+            f.Margin = new Padding(0, 4, rightMargin, 4);
+            return f;
+        }
+
+        // ── Header: title and day on the left, fecha and agente lined up with the right column ──
         Control BuildHeader()
         {
-            var p = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 8) };
-            p.Controls.Add(new Label { Text = "CORTE DE CAJA", AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold), Margin = new Padding(0, 0, 20, 0) });
-            p.Controls.Add(new Label { Text = "Fecha:", AutoSize = true, Margin = new Padding(3, 7, 3, 0) });
-            p.Controls.Add(dtFecha);
-            p.Controls.Add(lblDia);
-            p.Controls.Add(new Label { Text = "Agente:", AutoSize = true, Margin = new Padding(3, 7, 3, 0) });
-            p.Controls.Add(txtAgente);
-            foreach (Control c in p.Controls) if (c is TextBox || c is DateTimePicker) c.Margin = new Padding(3, 4, 3, 0);
+            int leftBlock = CardPadX * 2 + LeftW + Gap + CardPadX;
+            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 12) };
+
+            var title = new Panel { Size = new Size(leftBlock, 60), Margin = Padding.Empty };
+            title.Controls.Add(new Label { Text = "Corte de caja", AutoSize = true, Font = Theme.PageTitle, ForeColor = Theme.Text, Location = new Point(-2, 0) });
+            var sub = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Location = new Point(0, 38), Margin = Padding.Empty };
+            sub.Controls.Add(lblDia);
+            sub.Controls.Add(Theme.MakeLabel("  ·  ", Theme.Body, Theme.Hint, new Padding(0)));
+            sub.Controls.Add(lblGuardado);
+            title.Controls.Add(sub);
+
+            var fields = new Panel { Size = new Size(RightW + CardPadX, 60), Margin = Padding.Empty };
+            fields.Controls.Add(new Label { Text = "FECHA", AutoSize = true, Font = Theme.FieldLabel, ForeColor = Theme.Muted, Location = new Point(0, 4) });
+            dtFecha.Location = new Point(0, 24);
+            fields.Controls.Add(dtFecha);
+            fields.Controls.Add(new Label { Text = "AGENTE", AutoSize = true, Font = Theme.FieldLabel, ForeColor = Theme.Muted, Location = new Point(172, 4) });
+            var agente = new Field(txtAgente, RightW - 172) { Location = new Point(172, 24) };
+            fields.Controls.Add(agente);
+
+            row.Controls.Add(title);
+            row.Controls.Add(fields);
+            return row;
+        }
+
+        // ── Left column: Entradas, Desglose and the Cuadre check ──
+        Control BuildLeft()
+        {
+            var col = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, Gap, 0) };
+
+            var entradas = MoneyCard("Entradas", "Dinero que entró", lblTotEntradas, out var t);
+            Row(t, "Caja Negra", F(mW, AmountW), F(nW, NoteW, 0));
+            Row(t, "Envíos", F(mEnvios, AmountW));
+            Row(t, "Otro ingreso", F(mOtroIng, AmountW), F(nOtroIng, NoteW, 0));
+            col.Controls.Add(entradas);
+
+            var desglose = MoneyCard("Desglose", "Cómo se entrega", lblTotDesglose, out t);
+            Row(t, "Cash", F(mCash, AmountW));
+            lblChequesInfo.Anchor = AnchorStyles.Left;
+            Row(t, "Cheques", F(tCheques, AmountW), lblChequesInfo);
+            Row(t, "Máquina", F(mMaquina, AmountW));
+            var dev = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
+            int half = (NoteW - 8) / 2;
+            dev.Controls.Add(F(nDevPersona, half));
+            dev.Controls.Add(F(nDevAgencia, NoteW - 8 - half, 0));
+            Row(t, "Devolución", F(mDevol, AmountW), dev);
+            Row(t, "Compra", F(mCompra, AmountW), F(nCompra, NoteW, 0));
+            Row(t, "Otras cosas", F(mOtros, AmountW), F(nOtros, NoteW, 0));
+            col.Controls.Add(desglose);
+
+            var cuadre = new Card { Margin = Padding.Empty };
+            var line = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
+            int statW = (LeftW - pill.Width) / 3;
+            line.Controls.Add(Stat("Entradas", statEntradas, statW));
+            line.Controls.Add(Stat("Desglose", statDesglose, statW));
+            line.Controls.Add(Stat("Diferencia", statDif, statW));
+            line.Controls.Add(pill);
+            cuadre.Add(line);
+            col.Controls.Add(cuadre);
+            return col;
+        }
+
+        static Panel Stat(string caption, Label value, int width)
+        {
+            var p = new Panel { Size = new Size(width, 44), Margin = Padding.Empty };
+            p.Controls.Add(new Label { Text = caption, AutoSize = true, Font = Theme.Small, ForeColor = Theme.Muted, Location = new Point(0, 0) });
+            p.Controls.Add(value);
             return p;
         }
 
-        Control BuildMoneyTable()
+        static Card MoneyCard(string title, string subtitle, Label total, out TableLayoutPanel rows)
         {
-            var t = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, Margin = new Padding(0, 0, 20, 0) };
-
-            void Section(string title)
-            {
-                int r = t.RowCount++;
-                var l = new Label { Text = title, AutoSize = true, Font = new Font("Segoe UI", 11f, FontStyle.Bold), ForeColor = Accent, Margin = new Padding(3, r == 0 ? 0 : 14, 3, 4) };
-                t.Controls.Add(l, 0, r);
-                t.SetColumnSpan(l, 4);
-            }
-            void Row(string label, Control amount, params Control[] extras)
-            {
-                int r = t.RowCount++;
-                t.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 0, 10, 0) }, 0, r);
-                t.Controls.Add(amount, 1, r);
-                int col = 2;
-                foreach (var x in extras)
-                {
-                    t.Controls.Add(x, col, r);
-                    if (extras.Length == 1 && x.Width > 300) t.SetColumnSpan(x, 2);
-                    col++;
-                }
-            }
-            void TotalRow(string label, Label total)
-            {
-                int r = t.RowCount++;
-                t.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left, Font = new Font("Segoe UI", 11f, FontStyle.Bold) }, 0, r);
-                t.Controls.Add(total, 1, r);
-            }
-
-            Section("ENTRADAS — dinero que entró");
-            Row("W", mW, nW);
-            Row("+ Envíos", mEnvios);
-            Row("Otro ingreso", mOtroIng, nOtroIng);
-            TotalRow("TOTAL", lblTotEntradas);
-
-            Section("DESGLOSE — cómo se entrega");
-            Row("Cash", mCash);
-            Row("Cheques", tCheques, lblChequesInfo);
-            t.SetColumnSpan(lblChequesInfo, 2);
-            Row("Máquina", mMaquina);
-            Row("Devolución", mDevol, nDevPersona, nDevAgencia);
-            Row("Compra", mCompra, nCompra);
-            Row("Otras cosas", mOtros, nOtros);
-            TotalRow("TOTAL", lblTotDesglose);
-
-            int er = t.RowCount++;
-            t.Controls.Add(lblEstado, 0, er);
-            t.SetColumnSpan(lblEstado, 4);
-            return t;
+            var card = new Card();
+            var head = new Panel { Size = new Size(LeftW, 44), Margin = Padding.Empty };
+            head.Controls.Add(new Label { Text = title, AutoSize = true, Font = Theme.CardTitle, ForeColor = Theme.Text, Location = new Point(0, 0) });
+            head.Controls.Add(new Label { Text = subtitle, AutoSize = true, Font = Theme.Small, ForeColor = Theme.Muted, Location = new Point(0, 24) });
+            head.Controls.Add(total);
+            card.Add(head);
+            card.Add(Theme.Separator(LeftW));
+            rows = new TableLayoutPanel { AutoSize = true, ColumnCount = 3, Margin = Padding.Empty };
+            card.Add(rows);
+            return card;
         }
 
-        Control BuildRightSide()
+        static void Row(TableLayoutPanel t, string label, Control amount, Control extra = null)
         {
-            var p = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-            p.Controls.Add(new Label { Text = "CHEQUES CAMBIADOS", AutoSize = true, Font = new Font("Segoe UI", 11f, FontStyle.Bold), ForeColor = Accent, Margin = new Padding(3, 0, 3, 4) });
+            int r = t.RowCount++;
+            t.Controls.Add(new Label
+            {
+                Text = label, AutoSize = false, Size = new Size(LabelW, 30), Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft, ForeColor = Theme.Text, Margin = new Padding(0, 4, 8, 4),
+            }, 0, r);
+            t.Controls.Add(amount, 1, r);
+            if (extra != null) t.Controls.Add(extra, 2, r);
+        }
 
-            grid.Size = new Size(440, 230);
+        // ── Right column: cheques list and the agent's signature ──
+        Control BuildRight()
+        {
+            var col = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Padding.Empty };
+
+            var cheques = new Card();
+            var head = new Panel { Size = new Size(RightW, 30), Margin = new Padding(0, 0, 0, 6) };
+            head.Controls.Add(new Label { Text = "Cheques cambiados", AutoSize = true, Font = Theme.CardTitle, ForeColor = Theme.Text, Location = new Point(0, 2) });
+            head.Controls.Add(lblChequesCount);
+            cheques.Add(head);
+            SetupGrid();
+            cheques.Add(new Frame(grid, RightW, 296));
+            cheques.Add(new Label
+            {
+                Text = "Un cheque por línea: número y monto. Para quitar uno, haga clic en ✕.",
+                AutoSize = true, MaximumSize = new Size(RightW, 0), Font = Theme.Small, ForeColor = Theme.Muted, Margin = new Padding(0, 6, 0, 0),
+            });
+            col.Controls.Add(cheques);
+
+            var sign = new Card { Margin = Padding.Empty };
+            var shead = new Panel { Size = new Size(RightW, 30), Margin = new Padding(0, 0, 0, 6) };
+            shead.Controls.Add(new Label { Text = "Firma del agente", AutoSize = true, Font = Theme.CardTitle, ForeColor = Theme.Text, Location = new Point(0, 2) });
+            var clear = new LinkLabel
+            {
+                Text = "Borrar firma", AutoSize = false, Size = new Size(140, 30), Location = new Point(RightW - 140, 0),
+                TextAlign = ContentAlignment.MiddleRight, LinkColor = Theme.Accent, ActiveLinkColor = Theme.AccentPressed,
+                LinkBehavior = LinkBehavior.HoverUnderline, TabStop = false,
+            };
+            clear.LinkClicked += (s, e) => firma.Clear();
+            shead.Controls.Add(clear);
+            sign.Add(shead);
+            firma.Margin = Padding.Empty;
+            sign.Add(firma);
+            col.Controls.Add(sign);
+            return col;
+        }
+
+        void SetupGrid()
+        {
+            grid.BorderStyle = BorderStyle.None;
             grid.BackgroundColor = Color.White;
+            grid.GridColor = Theme.Border;
+            grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            grid.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
+            grid.RowHeadersVisible = false;
             grid.AllowUserToResizeRows = false;
-            grid.RowHeadersWidth = 30;
+            grid.AllowUserToResizeColumns = false;
+            grid.MultiSelect = false;
+            grid.SelectionMode = DataGridViewSelectionMode.CellSelect;
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             grid.EnableHeadersVisualStyles = false;
+            grid.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Theme.ReadOnlyFill, ForeColor = Theme.Muted, Font = Theme.FieldLabel,
+                SelectionBackColor = Theme.ReadOnlyFill, SelectionForeColor = Theme.Muted, Padding = new Padding(6, 6, 6, 6),
+            };
+            grid.DefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.White, ForeColor = Theme.Text, Font = Theme.Body,
+                SelectionBackColor = Theme.AccentSoft, SelectionForeColor = Theme.Text, Padding = new Padding(6, 4, 6, 4),
+            };
             // Size header and rows from the font; fixed pixel heights don't follow display scaling.
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            grid.DefaultCellStyle.Padding = new Padding(2, 3, 2, 3);
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Numero", HeaderText = "Número de cheque", FillWeight = 60 });
+            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Numero", HeaderText = "NÚMERO DE CHEQUE", FillWeight = 58, SortMode = DataGridViewColumnSortMode.NotSortable });
             grid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Monto", HeaderText = "Monto", FillWeight = 40,
+                Name = "Monto", HeaderText = "MONTO", FillWeight = 32, SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight },
+                HeaderCell = { Style = { Alignment = DataGridViewContentAlignment.MiddleRight } },
             });
+            grid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Quitar", HeaderText = "", FillWeight = 10, ReadOnly = true, SortMode = DataGridViewColumnSortMode.NotSortable,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter, ForeColor = Theme.Hint,
+                    SelectionBackColor = Theme.DangerSoft, SelectionForeColor = Theme.Danger,
+                },
+            });
+
+            grid.CellFormatting += (s, e) =>
+            {
+                if (e.ColumnIndex != 2 || e.RowIndex < 0) return;
+                e.Value = grid.Rows[e.RowIndex].IsNewRow ? "" : "✕";
+                e.FormattingApplied = true;
+            };
+            grid.CellClick += (s, e) =>
+            {
+                if (e.ColumnIndex == 2 && e.RowIndex >= 0 && !grid.Rows[e.RowIndex].IsNewRow) RemoveCheque(e.RowIndex);
+            };
+            grid.KeyDown += (s, e) =>
+            {
+                var row = grid.CurrentRow;
+                if (e.KeyCode == Keys.Delete && row != null && !row.IsNewRow && !grid.IsCurrentCellInEditMode)
+                {
+                    e.Handled = true;
+                    RemoveCheque(row.Index);
+                }
+            };
+            grid.CellMouseEnter += (s, e) => grid.Cursor = e.ColumnIndex == 2 && e.RowIndex >= 0 && !grid.Rows[e.RowIndex].IsNewRow ? Cursors.Hand : Cursors.Default;
             grid.CellValueChanged += (s, e) => Changed();
             grid.RowsRemoved += (s, e) => Changed();
             grid.CellEndEdit += (s, e) =>
@@ -173,43 +315,58 @@ namespace CorteDeCaja
                 var cell = grid.Rows[e.RowIndex].Cells[1];
                 if (Fmt.TryParseMoney(cell.Value as string, out var v) && v != 0) cell.Value = v.ToString("0.00");
             };
-            p.Controls.Add(grid);
-            p.Controls.Add(new Label { Text = "Escriba cada cheque en una línea. Para quitar uno: selecciónelo a la izquierda y presione Supr.", AutoSize = true, MaximumSize = new Size(440, 0), ForeColor = Color.DimGray, Font = new Font("Segoe UI", 8.5f) });
-
-            p.Controls.Add(new Label { Text = "FIRMA DEL AGENTE", AutoSize = true, Font = new Font("Segoe UI", 11f, FontStyle.Bold), ForeColor = Accent, Margin = new Padding(3, 14, 3, 4) });
-            p.Controls.Add(firma);
-            var clear = new Button { Text = "Borrar firma", AutoSize = true, TabStop = false };
-            clear.Click += (s, e) => firma.Clear();
-            p.Controls.Add(clear);
-            return p;
         }
 
-        Control BuildButtons()
+        // Removing a row from inside a grid event can upset the grid, so do it right after.
+        void RemoveCheque(int index) => BeginInvoke((Action)(() =>
         {
-            var p = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 14, 0, 0) };
-            Button B(string text, EventHandler click, bool primary = false)
+            if (index < 0 || index >= grid.Rows.Count || grid.Rows[index].IsNewRow) return;
+            grid.CancelEdit();
+            grid.Rows.RemoveAt(index);
+        }));
+
+        // ── Footer: tools on the left, print and save on the right ──
+        Control BuildFooter()
+        {
+            var card = new Card { Padding = new Padding(12, 10, 12, 10), Margin = new Padding(0, 12, 0, 12) };
+            var bar = new Panel { Size = new Size(CardPadX * 4 + LeftW + Gap + RightW - 24, 36), Margin = Padding.Empty };
+
+            var right = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Right, Margin = Padding.Empty };
+            UiButton B(FlowLayoutPanel p, string text, ButtonKind kind, string glyph, EventHandler click)
             {
-                var b = new Button { Text = text, AutoSize = true, Padding = new Padding(8, 4, 8, 4), Margin = new Padding(0, 0, 8, 0) };
-                if (primary) { b.BackColor = Accent; b.ForeColor = Color.White; b.FlatStyle = FlatStyle.Flat; }
+                var b = new UiButton(text, kind, glyph);
+                b.Margin = p == right ? new Padding(8, 0, 0, 0) : new Padding(0, 0, 4, 0);
                 b.Click += click;
                 p.Controls.Add(b);
                 return b;
             }
-            B("Guardar", (s, e) => SaveCurrent(), true);
-            B("Imprimir Térmica", (s, e) => PrintCurrent(true));
-            B("Imprimir Hoja", (s, e) => PrintCurrent(false));
-            B("Nuevo corte", (s, e) => { if (ConfirmDiscard()) ShowCorte(new Corte()); });
-            B("Historial", (s, e) => OpenHistory());
-            B("Configuración", (s, e) => { using (var f = new SettingsForm(settings)) f.ShowDialog(this); });
-            p.Controls.Add(lblGuardado);
-            return p;
+            B(right, "Guardar", ButtonKind.Primary, "", (s, e) => SaveCurrent());
+            B(right, "Imprimir térmica", ButtonKind.Secondary, "", (s, e) => PrintCurrent(true));
+            B(right, "Imprimir hoja", ButtonKind.Secondary, "", (s, e) => PrintCurrent(false));
+
+            var left = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Dock = DockStyle.Left, Margin = Padding.Empty };
+            B(left, "Nuevo corte", ButtonKind.Ghost, "", (s, e) => { if (ConfirmDiscard()) ShowCorte(new Corte()); });
+            B(left, "Historial", ButtonKind.Ghost, "", (s, e) => OpenHistory());
+            B(left, "Configuración", ButtonKind.Ghost, "", (s, e) => { using (var f = new SettingsForm(settings)) f.ShowDialog(this); });
+
+            // Added right-first so Tab goes from the signature to Guardar.
+            bar.Controls.Add(right);
+            bar.Controls.Add(left);
+            card.Add(bar);
+            return card;
+        }
+
+        void SetSaveStatus(string text, Color color)
+        {
+            lblGuardado.Text = text;
+            lblGuardado.ForeColor = color;
         }
 
         void Changed()
         {
             if (loading) return;
             dirty = true;
-            lblGuardado.Text = "Sin guardar";
+            SetSaveStatus("Sin guardar", Theme.Warning);
             UpdateTotals();
         }
 
@@ -218,12 +375,19 @@ namespace CorteDeCaja
             var c = ReadForm(false);
             lblTotEntradas.Text = Fmt.Money(c.TotalEntradas);
             lblTotDesglose.Text = Fmt.Money(c.TotalDesglose);
-            tCheques.Text = Fmt.Money(c.TotalCheques);
-            lblChequesInfo.Text = c.Cheques.Count == 0 ? "← agréguelos en la lista de la derecha" : c.Cheques.Count + (c.Cheques.Count == 1 ? " cheque" : " cheques");
+            statEntradas.Text = Fmt.Money(c.TotalEntradas);
+            statDesglose.Text = Fmt.Money(c.TotalDesglose);
+            statDif.Text = (c.Diferencia > 0 ? "+" : "") + Fmt.Money(c.Diferencia);
+            statDif.ForeColor = c.Diferencia == 0 ? Theme.Text : Theme.Danger;
 
-            if (c.TotalEntradas == 0 && c.TotalDesglose == 0) lblEstado.Text = "";
-            else lblEstado.Text = c.Diferencia == 0 ? "✔ CUADRA" : c.Estado;
-            lblEstado.ForeColor = c.Diferencia == 0 ? Color.ForestGreen : Color.Firebrick;
+            tCheques.Text = Fmt.Money(c.TotalCheques);
+            int n = c.Cheques.Count;
+            lblChequesInfo.Text = n == 0 ? "Agréguelos en la lista de la derecha →" : n + (n == 1 ? " cheque en la lista" : " cheques en la lista");
+            lblChequesCount.Text = n == 0 ? "" : n + (n == 1 ? " cheque · " : " cheques · ") + Fmt.Money(c.TotalCheques);
+
+            if (c.TotalEntradas == 0 && c.TotalDesglose == 0) pill.Set(PillKind.Neutral, "Escriba los montos");
+            else if (c.Diferencia == 0) pill.Set(PillKind.Success, "Cuadra");
+            else pill.Set(PillKind.Danger, (c.Diferencia < 0 ? "Faltan " : "Sobran ") + Fmt.Money(Math.Abs(c.Diferencia)));
         }
 
         Corte ReadForm(bool withSignature = true)
@@ -261,7 +425,7 @@ namespace CorteDeCaja
             loading = true;
             current = c;
             dtFecha.Value = c.FechaDate;
-            lblDia.Text = "DÍA " + Fmt.Day(c.FechaDate);
+            lblDia.Text = DayText(c.FechaDate);
             txtAgente.Text = c.Agente;
             mW.Value = c.W; nW.Text = c.WNota;
             mEnvios.Value = c.Envios;
@@ -276,7 +440,7 @@ namespace CorteDeCaja
             firma.LoadBase64(c.FirmaPng);
             loading = false;
             dirty = false;
-            lblGuardado.Text = c.GuardadoEn == null ? "" : "Guardado " + c.GuardadoEn;
+            if (c.GuardadoEn == null) SetSaveStatus("Nuevo", Theme.Muted); else SetSaveStatus("Guardado " + c.GuardadoEn, Theme.Success);
             UpdateTotals();
         }
 
@@ -321,7 +485,7 @@ namespace CorteDeCaja
             }
             current = c;
             dirty = false;
-            lblGuardado.Text = "✔ Guardado " + c.GuardadoEn;
+            SetSaveStatus("✔ Guardado " + c.GuardadoEn, Theme.Success);
             return true;
         }
 

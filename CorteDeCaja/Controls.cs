@@ -45,7 +45,7 @@ namespace CorteDeCaja
 
         protected override void OnTextChanged(EventArgs e)
         {
-            BackColor = IsValid ? SystemColors.Window : Color.MistyRose;
+            BackColor = ReadOnly ? Theme.ReadOnlyFill : IsValid ? Color.White : Theme.DangerSoft;
             base.OnTextChanged(e);
         }
     }
@@ -225,12 +225,25 @@ namespace CorteDeCaja
             var g = e.Graphics;
             g.DrawImage(ink, 0, 0);
             float k = DpiScale, y = Height - 28 * k;
-            using (var pen = new Pen(Color.Silver)) g.DrawLine(pen, 28 * k, y, Width - 16 * k, y);
-            using (var f = new Font("Segoe UI", 14f)) g.DrawString("X", f, Brushes.Silver, 8 * k, y - 26 * k);
+            using (var pen = new Pen(Theme.BorderStrong)) g.DrawLine(pen, 30 * k, y, Width - 16 * k, y);
+            using (var f = new Font("Segoe UI", 13f))
+            using (var b = new SolidBrush(Theme.Hint)) g.DrawString("X", f, b, 10 * k, y - 24 * k);
             if (!HasInk)
                 using (var f = new Font("Segoe UI", 9f))
-                    g.DrawString("Firme aquí con el mouse o el dedo", f, Brushes.Silver, 30 * k, y + 4 * k);
-            g.DrawRectangle(Pens.Gray, 0, 0, Width - 1, Height - 1);
+                using (var b = new SolidBrush(Theme.Hint))
+                    g.DrawString("Firme aquí con el mouse o el dedo", f, b, 30 * k, y + 4 * k);
+            // Rounded border; the corners outside it are painted in the card color behind the pad.
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using (var outside = new System.Drawing.Drawing2D.GraphicsPath())
+            using (var round = Theme.Round(new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f), 6 * k))
+            using (var bg = new SolidBrush(Parent?.BackColor ?? Color.White))
+            using (var pen = new Pen(Theme.Border))
+            {
+                outside.AddRectangle(new Rectangle(-1, -1, Width + 2, Height + 2));
+                outside.AddPath(round, false);
+                g.FillPath(bg, outside);
+                g.DrawPath(pen, round);
+            }
         }
     }
 }
