@@ -125,7 +125,11 @@ namespace CorteDeCaja
         void ApplyLanguage()
         {
             SuspendLayout();
+            // Relabeling must never count as an edit to the corte.
+            bool wasLoading = loading;
+            loading = true;
             foreach (var a in relabel) a();
+            loading = wasLoading;
             lblDia.Text = Lang.LongDate(dtFecha.Value);
             RenderSaveStatus();
             UpdateTotals();
@@ -133,6 +137,14 @@ namespace CorteDeCaja
             firma.Invalidate();
             langToggle.Invalidate();
             ResumeLayout(true);
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            // The grid picks a current cell when it first appears; start with nothing highlighted.
+            grid.CurrentCell = null;
+            grid.ClearSelection();
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -359,7 +371,8 @@ namespace CorteDeCaja
                 }
             };
             grid.CellMouseEnter += (s, e) => grid.Cursor = e.ColumnIndex == 2 && e.RowIndex >= 0 && !grid.Rows[e.RowIndex].IsNewRow ? Cursors.Hand : Cursors.Default;
-            grid.CellValueChanged += (s, e) => Changed();
+            // Renaming a column header also raises this, with row -1; only real cells count as an edit.
+            grid.CellValueChanged += (s, e) => { if (e.RowIndex >= 0) Changed(); };
             grid.RowsRemoved += (s, e) => Changed();
             grid.CellEndEdit += (s, e) =>
             {
