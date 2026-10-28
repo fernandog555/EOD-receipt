@@ -37,6 +37,13 @@ namespace CorteDeCaja
             base.OnKeyDown(e);
         }
 
+        // Clicking into an amount selects it, so a new number replaces the old one.
+        protected override void OnEnter(EventArgs e)
+        {
+            base.OnEnter(e);
+            if (IsHandleCreated) BeginInvoke((Action)SelectAll);
+        }
+
         protected override void OnLeave(EventArgs e)
         {
             if (Text.Trim().Length > 0 && Fmt.TryParseMoney(Text, out var v)) Text = v.ToString("0.00");

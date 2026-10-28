@@ -30,7 +30,7 @@ namespace CorteDeCaja
         readonly MoneyBox mCash = new MoneyBox(), mMaquina = new MoneyBox(), mDevol = new MoneyBox(), mCompra = new MoneyBox(), mOtros = new MoneyBox();
         readonly TextBox tCheques = new TextBox { ReadOnly = true, TabStop = false, TextAlign = HorizontalAlignment.Right, BackColor = Theme.ReadOnlyFill, ForeColor = Theme.Text };
         readonly Label lblChequesInfo = Theme.MakeLabel("", Theme.Small, Theme.Muted, Dpi.P(0));
-        readonly NoteBox nDevPersona = new NoteBox("Nombre de la persona"), nDevAgencia = new NoteBox("Agencia");
+        readonly NoteBox nDevPersona = new NoteBox("Persona"), nDevAgencia = new NoteBox("Agencia");
         readonly NoteBox nCompra = new NoteBox("¿Qué se compró? (ej. papel)"), nOtros = new NoteBox("¿Qué fue? (obligatorio)");
 
         readonly Label lblTotEntradas = HeaderTotal(), lblTotDesglose = HeaderTotal();
@@ -324,6 +324,8 @@ namespace CorteDeCaja
             if (index < 0 || index >= grid.Rows.Count || grid.Rows[index].IsNewRow) return;
             grid.CancelEdit();
             grid.Rows.RemoveAt(index);
+            grid.CurrentCell = null;
+            grid.ClearSelection();
         }));
 
         // ── Footer: tools on the left, print and save on the right ──
