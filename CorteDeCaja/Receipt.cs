@@ -63,7 +63,7 @@ namespace CorteDeCaja
                 // Windows 11's own print dialog can't preview for this kind of app, so use our own window.
                 if (!known || !s.ImprimirDirecto)
                 {
-                    var title = thermal ? "Vista previa — recibo térmico" : "Vista previa — hoja";
+                    var title = thermal ? Lang.T("Vista previa — recibo térmico", "Preview — thermal receipt") : Lang.T("Vista previa — hoja", "Preview — sheet");
                     using (var f = new PrintPreviewForm(doc, r.ApplyPageSettings, title))
                         if (f.ShowDialog(owner) != DialogResult.OK) return;
                     if (doc.PrinterSettings.PrinterName != saved)
@@ -80,7 +80,7 @@ namespace CorteDeCaja
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(owner, "No se pudo imprimir:\n" + ex.Message, "Imprimir", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(owner, Lang.T("No se pudo imprimir:", "Could not print:") + "\n" + ex.Message, Lang.T("Imprimir", "Print"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }

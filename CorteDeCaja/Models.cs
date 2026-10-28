@@ -79,6 +79,8 @@ namespace CorteDeCaja
         [DataMember] public int AnchoTermicaMm = 80;
         // Off by default: every print shows the preview window first.
         [DataMember] public bool ImprimirDirecto;
+        // Screen language: "es" or "en". Printed receipts are always in Spanish.
+        [DataMember] public string Idioma = "es";
 
         [OnDeserialized]
         void FixNulls(StreamingContext _)
@@ -86,6 +88,7 @@ namespace CorteDeCaja
             NombreNegocio = NombreNegocio ?? "";
             ImpresoraTermica = ImpresoraTermica ?? "";
             ImpresoraHoja = ImpresoraHoja ?? "";
+            Idioma = Idioma == "en" ? "en" : "es";
             if (AnchoTermicaMm != 58) AnchoTermicaMm = 80;
         }
     }

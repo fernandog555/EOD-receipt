@@ -64,12 +64,23 @@ namespace CorteDeCaja
         static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string lParam);
         const int EM_SETCUEBANNER = 0x1501;
 
-        readonly string cue;
+        string cue;
 
         public NoteBox(string cue, int width = 180)
         {
             this.cue = cue;
             Width = width;
+        }
+
+        /// <summary>Grey hint text shown while the box is empty.</summary>
+        public string Cue
+        {
+            get => cue;
+            set
+            {
+                cue = value ?? "";
+                if (IsHandleCreated) SendMessage(Handle, EM_SETCUEBANNER, (IntPtr)1, cue);
+            }
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -238,7 +249,7 @@ namespace CorteDeCaja
             if (!HasInk)
                 using (var f = new Font("Segoe UI", 9f))
                 using (var b = new SolidBrush(Theme.Hint))
-                    g.DrawString("Firme aquí con el mouse o el dedo", f, b, 30 * k, y + 4 * k);
+                    g.DrawString(Lang.T("Firme aquí con el mouse o el dedo", "Sign here with the mouse or your finger"), f, b, 30 * k, y + 4 * k);
             // Rounded border; the corners outside it are painted in the card color behind the pad.
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             using (var outside = new System.Drawing.Drawing2D.GraphicsPath())

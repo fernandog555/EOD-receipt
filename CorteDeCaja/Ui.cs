@@ -214,7 +214,6 @@ namespace CorteDeCaja
     /// <summary>Date field that matches the text fields. Click it for a calendar; ↑ ↓ move one day.</summary>
     public class DateField : Control
     {
-        static readonly System.Globalization.CultureInfo Es = new System.Globalization.CultureInfo("es-MX");
         DateTime date = DateTime.Today;
         bool hover;
         ToolStripDropDown drop;
@@ -304,8 +303,7 @@ namespace CorteDeCaja
             var border = Focused ? Theme.Accent : hover ? Theme.BorderStrong : Theme.Border;
             Theme.PaintBox(g, this, Color.White, border, 6, Focused ? 1.6f : 1f);
             int pad = Dpi.S(10), icon = Dpi.S(22);
-            var text = date.ToString("ddd", Es).TrimEnd('.');
-            text = char.ToUpper(text[0], Es) + text.Substring(1) + "  " + Fmt.Date(date);
+            var text = Lang.Cap(date.ToString("ddd", Lang.Culture).TrimEnd('.')) + "  " + Fmt.Date(date);
             TextRenderer.DrawText(g, text, Font, new Rectangle(pad, 0, Width - pad - icon - pad, Height), Theme.Text,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
             TextRenderer.DrawText(g, "", Theme.Icons, new Rectangle(Width - pad - icon, 0, icon, Height), Theme.Muted,
@@ -319,7 +317,7 @@ namespace CorteDeCaja
     /// </summary>
     public class MonthPicker : Control
     {
-        static readonly System.Globalization.CultureInfo Es = new System.Globalization.CultureInfo("es-MX");
+        static System.Globalization.CultureInfo Es => Lang.Culture;
         const int Cell = 38, Pad = 12, HeadH = 44, WeekH = 26, FootH = 46;
 
         DateTime month, cursor;
@@ -351,7 +349,7 @@ namespace CorteDeCaja
         {
             get
             {
-                int w = TextRenderer.MeasureText("Hoy", Theme.Button).Width + Dpi.S(24);
+                int w = TextRenderer.MeasureText(Lang.T("Hoy", "Today"), Theme.Button).Width + Dpi.S(24);
                 return new Rectangle(Dpi.S(Pad), Height - Dpi.S(FootH - 6), w, Dpi.S(32));
             }
         }
@@ -432,7 +430,7 @@ namespace CorteDeCaja
             e.Handled = e.SuppressKeyPress = true;
         }
 
-        static string Cap(string s) => s.Length == 0 ? s : char.ToUpper(s[0], Es) + s.Substring(1);
+        static string Cap(string s) => Lang.Cap(s);
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -503,10 +501,80 @@ namespace CorteDeCaja
                 using (var b = new SolidBrush(hoverBtn == "hoy" ? Theme.AccentSoft : Color.White)) g.FillPath(b, path);
                 using (var pen = new Pen(Theme.BorderStrong)) g.DrawPath(pen, path);
             }
-            TextRenderer.DrawText(g, "Hoy", Theme.Button, hoy, Theme.Accent, center);
-            var sel = selected.ToString("d 'de' MMM yyyy", Es).Replace(".", "");
+            TextRenderer.DrawText(g, Lang.T("Hoy", "Today"), Theme.Button, hoy, Theme.Accent, center);
+            var sel = selected.ToString(Lang.T("d 'de' MMM yyyy", "MMM d, yyyy"), Es).Replace(".", "");
             TextRenderer.DrawText(g, sel, Theme.Small, new Rectangle(hoy.Right, hoy.Y, Width - hoy.Right - Dpi.S(Pad), hoy.Height), Theme.Muted,
                 TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
+    }
+
+    /// <summary>Segmented "ES | EN" switch. Click (or Space/Enter when focused) flips the language.</summary>
+    public class LangToggle : Control
+    {
+        int hover = -1;
+        public event EventHandler Toggled;
+
+        public LangToggle()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
+            TabStop = true;
+            Cursor = Cursors.Hand;
+            Font = Theme.Button;
+            Size = new Size(Dpi.S(92), TextRenderer.MeasureText("Ág", Theme.Body).Height + Dpi.S(12) + 1);
+        }
+
+        Rectangle Half(int i) { int w = Width / 2; return new Rectangle(i * w, 0, i == 0 ? w : Width - w, Height); }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            int h = Half(0).Contains(e.Location) ? 0 : 1;
+            if (h != hover) { hover = h; Invalidate(); }
+        }
+        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = -1; Invalidate(); }
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (e.Button != MouseButtons.Left) return;
+            bool wantEn = !Half(0).Contains(e.Location);
+            if (wantEn != Lang.En) Toggled?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter || e.KeyCode == Keys.Left || e.KeyCode == Keys.Right)
+            {
+                e.Handled = e.SuppressKeyPress = true;
+                Toggled?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        protected override bool IsInputKey(Keys k) => (k & Keys.KeyCode) == Keys.Left || (k & Keys.KeyCode) == Keys.Right || base.IsInputKey(k);
+
+        protected override void OnPaintBackground(PaintEventArgs e) { }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            Theme.PaintBox(g, this, Color.White, Focused ? Theme.Accent : Theme.Border, 6, Focused ? 1.6f : 1f);
+            int active = Lang.En ? 1 : 0, inset = Dpi.S(3);
+            for (int i = 0; i < 2; i++)
+            {
+                var r = Half(i);
+                var inner = new Rectangle(r.X + inset, r.Y + inset, r.Width - inset * 2, r.Height - inset * 2);
+                if (i == active)
+                    using (var path = Theme.Round(inner, Dpi.S(4)))
+                    using (var b = new SolidBrush(Theme.Accent)) g.FillPath(b, path);
+                else if (i == hover)
+                    using (var path = Theme.Round(inner, Dpi.S(4)))
+                    using (var b = new SolidBrush(Theme.Hover)) g.FillPath(b, path);
+                TextRenderer.DrawText(g, i == 0 ? "ES" : "EN", Font, r, i == active ? Color.White : Theme.Muted,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            }
         }
     }
 

@@ -69,11 +69,23 @@ namespace CorteDeCaja
                     Dump(f, 0);
                 }
                 // Capture the screen rather than DrawToBitmap, which draws native text boxes at the wrong size on high-DPI screens.
-                using (var b = new System.Drawing.Bitmap(f.Width, f.Height))
+                void Capture(string name)
                 {
-                    using (var g = System.Drawing.Graphics.FromImage(b)) g.CopyFromScreen(f.Location, System.Drawing.Point.Empty, f.Size);
-                    b.Save(Path.Combine(dir, "ventana.png"), ImageFormat.Png);
+                    for (int i = 0; i < 6; i++) { Application.DoEvents(); System.Threading.Thread.Sleep(50); }
+                    f.Refresh();
+                    using (var b = new System.Drawing.Bitmap(f.Width, f.Height))
+                    {
+                        using (var g = System.Drawing.Graphics.FromImage(b)) g.CopyFromScreen(f.Location, System.Drawing.Point.Empty, f.Size);
+                        b.Save(Path.Combine(dir, name), ImageFormat.Png);
+                    }
                 }
+                // Both languages; the switch is not saved, so the user's choice is left alone.
+                bool wasEn = Lang.En;
+                Lang.Set(false);
+                Capture("ventana.png");
+                Lang.Set(true);
+                Capture("ventana-en.png");
+                Lang.Set(wasEn);
                 f.Close();
             }
         }

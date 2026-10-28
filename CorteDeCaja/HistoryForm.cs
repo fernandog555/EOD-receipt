@@ -12,7 +12,7 @@ namespace CorteDeCaja
     {
         readonly AppSettings settings;
         readonly ListView list = new ListView { View = View.Details, FullRowSelect = true, GridLines = true, MultiSelect = false, Dock = DockStyle.Fill, HideSelection = false };
-        readonly TextBox search = new NoteBox("Buscar por agente o fecha…", 260);
+        readonly TextBox search = new NoteBox(Lang.T("Buscar por agente o fecha…", "Search by agent or date…"), 260);
         readonly Label summary = new Label { AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(12, 6, 0, 0) };
 
         public Corte Selected { get; private set; }
@@ -23,7 +23,7 @@ namespace CorteDeCaja
             SuspendLayout();
             AutoScaleDimensions = new SizeF(96f, 96f);
             AutoScaleMode = AutoScaleMode.Dpi;
-            Text = "Historial de cortes";
+            Text = Lang.T("Historial de cortes", "Count history");
             Font = new Font("Segoe UI", 10f);
             Size = new Size(1050, 600);
             StartPosition = FormStartPosition.CenterParent;
@@ -31,8 +31,9 @@ namespace CorteDeCaja
 
             foreach (var (title, width, right) in new[]
             {
-                ("Fecha", 100, false), ("Día", 110, false), ("Agente", 160, false), ("Entradas", 110, true),
-                ("Desglose", 110, true), ("# Cheques", 85, true), ("Total cheques", 120, true), ("Estado", 140, false), ("Guardado", 160, false),
+                (Lang.T("Fecha", "Date"), 100, false), (Lang.T("Día", "Day"), 110, false), (Lang.T("Agente", "Agent"), 160, false), (Lang.T("Entradas", "Money in"), 110, true),
+                (Lang.T("Desglose", "Breakdown"), 110, true), (Lang.T("# Cheques", "# Checks"), 85, true), (Lang.T("Total cheques", "Checks total"), 120, true),
+                (Lang.T("Estado", "Status"), 140, false), (Lang.T("Guardado", "Saved"), 160, false),
             })
                 // Auto-scaling doesn't reach ListView columns, so scale them by hand.
                 list.Columns.Add(title, LogicalToDeviceUnits(width), right ? HorizontalAlignment.Right : HorizontalAlignment.Left);
@@ -50,12 +51,12 @@ namespace CorteDeCaja
                 b.Click += (s, e) => click();
                 bottom.Controls.Add(b);
             }
-            B("Abrir / editar", OpenSelected);
-            B("Imprimir Térmica", () => PrintSelected(true));
-            B("Imprimir Hoja", () => PrintSelected(false));
-            B("Borrar", DeleteSelected);
-            B("Abrir carpeta", () => { Directory.CreateDirectory(Storage.CortesDir); Process.Start("explorer.exe", Storage.CortesDir); });
-            B("Cerrar", Close);
+            B(Lang.T("Abrir / editar", "Open / edit"), OpenSelected);
+            B(Lang.T("Imprimir térmica", "Print thermal"), () => PrintSelected(true));
+            B(Lang.T("Imprimir hoja", "Print sheet"), () => PrintSelected(false));
+            B(Lang.T("Borrar", "Delete"), DeleteSelected);
+            B(Lang.T("Abrir carpeta", "Open folder"), () => { Directory.CreateDirectory(Storage.CortesDir); Process.Start("explorer.exe", Storage.CortesDir); });
+            B(Lang.T("Cerrar", "Close"), Close);
 
             Controls.Add(list);
             Controls.Add(top);
@@ -72,7 +73,7 @@ namespace CorteDeCaja
                 q.Length == 0 ||
                 c.Agente.ToLowerInvariant().Contains(q) ||
                 Fmt.Date(c.FechaDate).Contains(q) ||
-                Fmt.Day(c.FechaDate).ToLowerInvariant().Contains(q)).ToList();
+                Lang.DayName(c.FechaDate).ToLowerInvariant().Contains(q)).ToList();
 
             list.BeginUpdate();
             list.Items.Clear();
@@ -80,21 +81,21 @@ namespace CorteDeCaja
             {
                 var item = new ListViewItem(new[]
                 {
-                    Fmt.Date(c.FechaDate), Fmt.Day(c.FechaDate), c.Agente, Fmt.Money(c.TotalEntradas), Fmt.Money(c.TotalDesglose),
-                    c.Cheques.Count.ToString(), Fmt.Money(c.TotalCheques), c.Estado, c.GuardadoEn ?? "",
+                    Fmt.Date(c.FechaDate), Lang.DayName(c.FechaDate), c.Agente, Fmt.Money(c.TotalEntradas), Fmt.Money(c.TotalDesglose),
+                    c.Cheques.Count.ToString(), Fmt.Money(c.TotalCheques), Lang.Status(c), c.GuardadoEn ?? "",
                 }) { Tag = c };
                 if (c.Diferencia != 0) item.ForeColor = Color.Firebrick;
                 list.Items.Add(item);
             }
             list.EndUpdate();
-            summary.Text = cortes.Count + " cortes · " + cortes.Sum(c => c.Cheques.Count) + " cheques por " + Fmt.Money(cortes.Sum(c => c.TotalCheques));
+            summary.Text = cortes.Count + Lang.T(" cortes · ", " counts · ") + Lang.Checks(cortes.Sum(c => c.Cheques.Count)) + Lang.T(" por ", " for ") + Fmt.Money(cortes.Sum(c => c.TotalCheques));
         }
 
         Corte Current()
         {
             if (list.SelectedItems.Count == 0)
             {
-                MessageBox.Show(this, "Seleccione un corte de la lista.", Text);
+                MessageBox.Show(this, Lang.T("Seleccione un corte de la lista.", "Select a count from the list."), Text);
                 return null;
             }
             return (Corte)list.SelectedItems[0].Tag;
@@ -118,7 +119,7 @@ namespace CorteDeCaja
         {
             var c = Current();
             if (c == null) return;
-            if (MessageBox.Show(this, $"¿Borrar el corte del {Fmt.Date(c.FechaDate)} de {c.Agente}?\nEsto no se puede deshacer.", "Borrar",
+            if (MessageBox.Show(this, Lang.T($"¿Borrar el corte del {Fmt.Date(c.FechaDate)} de {c.Agente}?\nEsto no se puede deshacer.", $"Delete the {Fmt.Date(c.FechaDate)} count by {c.Agente}?\nThis can't be undone."), Lang.T("Borrar", "Delete"),
                     MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
             Storage.DeleteCorte(c);
             Reload();

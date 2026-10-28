@@ -11,7 +11,7 @@ namespace CorteDeCaja
             SuspendLayout();
             AutoScaleDimensions = new SizeF(96f, 96f);
             AutoScaleMode = AutoScaleMode.Dpi;
-            Text = "Configuración";
+            Text = Lang.T("Configuración", "Settings");
             Font = new Font("Segoe UI", 10f);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = MinimizeBox = false;
@@ -25,7 +25,7 @@ namespace CorteDeCaja
             var ancho = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
             ancho.Items.AddRange(new object[] { "80 mm", "58 mm" });
             ancho.SelectedIndex = s.AnchoTermicaMm == 58 ? 1 : 0;
-            var direct = new CheckBox { Text = "Imprimir directo, sin vista previa", Checked = s.ImprimirDirecto, AutoSize = true };
+            var direct = new CheckBox { Text = Lang.T("Imprimir directo, sin vista previa", "Print directly, without preview"), Checked = s.ImprimirDirecto, AutoSize = true };
 
             var t = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Padding = new Padding(12) };
             void Row(string label, Control c)
@@ -34,15 +34,15 @@ namespace CorteDeCaja
                 t.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, r);
                 t.Controls.Add(c, 1, r);
             }
-            Row("Nombre del negocio (sale en el recibo):", negocio);
-            Row("Impresora térmica:", termica);
-            Row("Ancho del papel térmico:", ancho);
-            Row("Impresora de hojas:", hoja);
+            Row(Lang.T("Nombre del negocio (sale en el recibo):", "Business name (printed on the receipt):"), negocio);
+            Row(Lang.T("Impresora térmica:", "Thermal printer:"), termica);
+            Row(Lang.T("Ancho del papel térmico:", "Thermal paper width:"), ancho);
+            Row(Lang.T("Impresora de hojas:", "Sheet printer:"), hoja);
             Row("", direct);
-            Row("Los cortes se guardan en:", new Label { Text = Storage.CortesDir, AutoSize = true, ForeColor = Color.DimGray });
+            Row(Lang.T("Los cortes se guardan en:", "Counts are saved in:"), new Label { Text = Storage.CortesDir, AutoSize = true, ForeColor = Color.DimGray });
 
-            var ok = new Button { Text = "Guardar", AutoSize = true, DialogResult = DialogResult.OK };
-            var cancel = new Button { Text = "Cancelar", AutoSize = true, DialogResult = DialogResult.Cancel };
+            var ok = new Button { Text = Lang.T("Guardar", "Save"), AutoSize = true, DialogResult = DialogResult.OK };
+            var cancel = new Button { Text = Lang.T("Cancelar", "Cancel"), AutoSize = true, DialogResult = DialogResult.Cancel };
             var buttons = new FlowLayoutPanel { AutoSize = true, Anchor = AnchorStyles.Right };
             buttons.Controls.Add(ok);
             buttons.Controls.Add(cancel);
@@ -67,7 +67,7 @@ namespace CorteDeCaja
         static ComboBox PrinterCombo(string selected)
         {
             var c = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 320 };
-            c.Items.Add("(elegir al imprimir)");
+            c.Items.Add(Lang.T("(elegir al imprimir)", "(choose when printing)"));
             foreach (string p in PrinterSettings.InstalledPrinters) c.Items.Add(p);
             c.SelectedIndex = System.Math.Max(0, c.Items.IndexOf(selected));
             return c;

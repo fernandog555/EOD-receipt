@@ -31,14 +31,14 @@ namespace CorteDeCaja
                 preview.InvalidatePreview();
             };
 
-            var print = new Button { Text = "Imprimir", AutoSize = true, DialogResult = DialogResult.OK, Padding = new Padding(10, 2, 10, 2),
+            var print = new Button { Text = Lang.T("Imprimir", "Print"), AutoSize = true, DialogResult = DialogResult.OK, Padding = new Padding(10, 2, 10, 2),
                 BackColor = Color.FromArgb(0, 90, 160), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
-            var cancel = new Button { Text = "Cancelar", AutoSize = true, DialogResult = DialogResult.Cancel, Padding = new Padding(6, 2, 6, 2) };
+            var cancel = new Button { Text = Lang.T("Cancelar", "Cancel"), AutoSize = true, DialogResult = DialogResult.Cancel, Padding = new Padding(6, 2, 6, 2) };
             AcceptButton = print;
             CancelButton = cancel;
 
             var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(8), WrapContents = false };
-            bar.Controls.Add(new Label { Text = "Impresora:", AutoSize = true, Margin = new Padding(3, 9, 3, 3) });
+            bar.Controls.Add(new Label { Text = Lang.T("Impresora:", "Printer:"), AutoSize = true, Margin = new Padding(3, 9, 3, 3) });
             bar.Controls.Add(printers);
             bar.Controls.Add(print);
             bar.Controls.Add(cancel);
