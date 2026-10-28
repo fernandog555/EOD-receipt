@@ -39,7 +39,7 @@ namespace CorteDeCaja
         readonly Label lblChequesCount = new Label { AutoSize = false, Size = Dpi.Sz(200, 30), Location = Dpi.Pt(RightW - 200, 0), TextAlign = ContentAlignment.MiddleRight, ForeColor = Theme.Muted };
 
         readonly DataGridView grid = new DataGridView();
-        readonly SignaturePad firma = new SignaturePad(Dpi.S(RightW), Dpi.S(136));
+        readonly SignaturePad firma = new SignaturePad(Dpi.S(RightW), Dpi.S(162));
 
         public MainForm()
         {
@@ -79,6 +79,7 @@ namespace CorteDeCaja
             ShowCorte(new Corte());
             ResumeLayout(false);
             PerformLayout();
+            ActiveControl = txtAgente;
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -437,6 +438,8 @@ namespace CorteDeCaja
             mOtros.Value = c.Otros; nOtros.Text = c.OtrosNota;
             grid.Rows.Clear();
             foreach (var ch in c.Cheques) grid.Rows.Add(ch.Numero, ch.Monto.ToString("0.00"));
+            grid.CurrentCell = null;
+            grid.ClearSelection();
             firma.LoadBase64(c.FirmaPng);
             loading = false;
             dirty = false;
