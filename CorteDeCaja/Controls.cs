@@ -95,7 +95,7 @@ namespace CorteDeCaja
             Size = new Size(width, height);
         }
 
-        float DpiScale => DeviceDpi / 96f;
+        float DpiScale => Dpi.K;
 
         // The pad grows on high-DPI screens, so keep the ink bitmap matched to the control size.
         protected override void OnSizeChanged(EventArgs e)

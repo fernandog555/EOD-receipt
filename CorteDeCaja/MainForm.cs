@@ -20,8 +20,8 @@ namespace CorteDeCaja
         bool dirty, loading;
 
         readonly DateField dtFecha = new DateField(160);
-        readonly Label lblDia = Theme.MakeLabel("", Theme.Body, Theme.Muted, new Padding(0));
-        readonly Label lblGuardado = Theme.MakeLabel("", Theme.Body, Theme.Muted, new Padding(0));
+        readonly Label lblDia = Theme.MakeLabel("", Theme.Body, Theme.Muted, Dpi.P(0));
+        readonly Label lblGuardado = Theme.MakeLabel("", Theme.Body, Theme.Muted, Dpi.P(0));
         readonly NoteBox txtAgente = new NoteBox("Nombre del agente");
 
         readonly MoneyBox mW = new MoneyBox(), mEnvios = new MoneyBox(), mOtroIng = new MoneyBox();
@@ -29,25 +29,25 @@ namespace CorteDeCaja
 
         readonly MoneyBox mCash = new MoneyBox(), mMaquina = new MoneyBox(), mDevol = new MoneyBox(), mCompra = new MoneyBox(), mOtros = new MoneyBox();
         readonly TextBox tCheques = new TextBox { ReadOnly = true, TabStop = false, TextAlign = HorizontalAlignment.Right, BackColor = Theme.ReadOnlyFill, ForeColor = Theme.Text };
-        readonly Label lblChequesInfo = Theme.MakeLabel("", Theme.Small, Theme.Muted, new Padding(0));
+        readonly Label lblChequesInfo = Theme.MakeLabel("", Theme.Small, Theme.Muted, Dpi.P(0));
         readonly NoteBox nDevPersona = new NoteBox("Nombre de la persona"), nDevAgencia = new NoteBox("Agencia");
         readonly NoteBox nCompra = new NoteBox("¿Qué se compró? (ej. papel)"), nOtros = new NoteBox("¿Qué fue? (obligatorio)");
 
         readonly Label lblTotEntradas = HeaderTotal(), lblTotDesglose = HeaderTotal();
         readonly Label statEntradas = StatValue(), statDesglose = StatValue(), statDif = StatValue();
-        readonly StatusPill pill = new StatusPill { Size = new Size(200, 42), Margin = new Padding(0, 1, 0, 1) };
-        readonly Label lblChequesCount = new Label { AutoSize = false, Size = new Size(200, 30), Location = new Point(RightW - 200, 0), TextAlign = ContentAlignment.MiddleRight, ForeColor = Theme.Muted };
+        readonly StatusPill pill = new StatusPill { Size = Dpi.Sz(200, 42), Margin = Dpi.P(0, 1, 0, 1) };
+        readonly Label lblChequesCount = new Label { AutoSize = false, Size = Dpi.Sz(200, 30), Location = Dpi.Pt(RightW - 200, 0), TextAlign = ContentAlignment.MiddleRight, ForeColor = Theme.Muted };
 
         readonly DataGridView grid = new DataGridView();
-        readonly SignaturePad firma = new SignaturePad(RightW, 136);
+        readonly SignaturePad firma = new SignaturePad(Dpi.S(RightW), Dpi.S(136));
 
         public MainForm()
         {
             settings = Storage.LoadSettings();
-            // Sizes below are written for 100% display scaling; WinForms scales them up on high-DPI screens.
+            // Sizes below are written for 100% display scaling and pass through Dpi once.
             SuspendLayout();
-            AutoScaleDimensions = new SizeF(96f, 96f);
-            AutoScaleMode = AutoScaleMode.Dpi;
+            // Scaling is done by hand through Dpi (see Ui.cs); fonts are in points and follow the display on their own.
+            AutoScaleMode = AutoScaleMode.None;
             Text = "Corte de Caja";
             Font = Theme.Body;
             ForeColor = Theme.Text;
@@ -58,7 +58,7 @@ namespace CorteDeCaja
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             BackColor = Theme.Page;
 
-            var root = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 3, Padding = new Padding(16, 12, 16, 4), Location = new Point(0, 0) };
+            var root = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 3, Padding = Dpi.P(16, 12, 16, 4), Location = Dpi.Pt(0, 0) };
             var header = BuildHeader();
             root.Controls.Add(header, 0, 0);
             root.SetColumnSpan(header, 2);
@@ -89,11 +89,11 @@ namespace CorteDeCaja
 
         static Label HeaderTotal() => new Label
         {
-            AutoSize = false, Size = new Size(240, 44), Location = new Point(LeftW - 240, 0),
+            AutoSize = false, Size = Dpi.Sz(240, 44), Location = Dpi.Pt(LeftW - 240, 0),
             TextAlign = ContentAlignment.MiddleRight, Font = Theme.Total, ForeColor = Theme.Text,
         };
 
-        static Label StatValue() => new Label { AutoSize = true, Font = Theme.Stat, ForeColor = Theme.Text, Location = new Point(0, 18) };
+        static Label StatValue() => new Label { AutoSize = true, Font = Theme.Stat, ForeColor = Theme.Text, Location = Dpi.Pt(0, 18) };
 
         static string DayText(DateTime d)
         {
@@ -104,7 +104,7 @@ namespace CorteDeCaja
         static Field F(TextBox box, int width, int rightMargin = 8)
         {
             var f = new Field(box, width);
-            f.Margin = new Padding(0, 4, rightMargin, 4);
+            f.Margin = Dpi.P(0, 4, rightMargin, 4);
             return f;
         }
 
@@ -112,22 +112,22 @@ namespace CorteDeCaja
         Control BuildHeader()
         {
             int leftBlock = CardPadX * 2 + LeftW + Gap + CardPadX;
-            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 12) };
+            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Dpi.P(0, 0, 0, 12) };
 
-            var title = new Panel { Size = new Size(leftBlock, 60), Margin = Padding.Empty };
-            title.Controls.Add(new Label { Text = "Corte de caja", AutoSize = true, Font = Theme.PageTitle, ForeColor = Theme.Text, Location = new Point(-2, 0) });
-            var sub = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Location = new Point(0, 38), Margin = Padding.Empty };
+            var title = new Panel { Size = Dpi.Sz(leftBlock, 60), Margin = Padding.Empty };
+            title.Controls.Add(new Label { Text = "Corte de caja", AutoSize = true, Font = Theme.PageTitle, ForeColor = Theme.Text, Location = Dpi.Pt(-2, 0) });
+            var sub = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Location = Dpi.Pt(0, 38), Margin = Padding.Empty };
             sub.Controls.Add(lblDia);
-            sub.Controls.Add(Theme.MakeLabel("  ·  ", Theme.Body, Theme.Hint, new Padding(0)));
+            sub.Controls.Add(Theme.MakeLabel("  ·  ", Theme.Body, Theme.Hint, Dpi.P(0)));
             sub.Controls.Add(lblGuardado);
             title.Controls.Add(sub);
 
-            var fields = new Panel { Size = new Size(RightW + CardPadX, 60), Margin = Padding.Empty };
-            fields.Controls.Add(new Label { Text = "FECHA", AutoSize = true, Font = Theme.FieldLabel, ForeColor = Theme.Muted, Location = new Point(0, 4) });
-            dtFecha.Location = new Point(0, 24);
+            var fields = new Panel { Size = Dpi.Sz(RightW + CardPadX, 60), Margin = Padding.Empty };
+            fields.Controls.Add(new Label { Text = "FECHA", AutoSize = true, Font = Theme.FieldLabel, ForeColor = Theme.Muted, Location = Dpi.Pt(0, 4) });
+            dtFecha.Location = Dpi.Pt(0, 24);
             fields.Controls.Add(dtFecha);
-            fields.Controls.Add(new Label { Text = "AGENTE", AutoSize = true, Font = Theme.FieldLabel, ForeColor = Theme.Muted, Location = new Point(172, 4) });
-            var agente = new Field(txtAgente, RightW - 172) { Location = new Point(172, 24) };
+            fields.Controls.Add(new Label { Text = "AGENTE", AutoSize = true, Font = Theme.FieldLabel, ForeColor = Theme.Muted, Location = Dpi.Pt(172, 4) });
+            var agente = new Field(txtAgente, RightW - 172) { Location = Dpi.Pt(172, 24) };
             fields.Controls.Add(agente);
 
             row.Controls.Add(title);
@@ -138,7 +138,7 @@ namespace CorteDeCaja
         // ── Left column: Entradas, Desglose and the Cuadre check ──
         Control BuildLeft()
         {
-            var col = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, Gap, 0) };
+            var col = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Dpi.P(0, 0, Gap, 0) };
 
             var entradas = MoneyCard("Entradas", "Dinero que entró", lblTotEntradas, out var t);
             Row(t, "Caja Negra", F(mW, AmountW), F(nW, NoteW, 0));
@@ -162,7 +162,7 @@ namespace CorteDeCaja
 
             var cuadre = new Card { Margin = Padding.Empty };
             var line = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
-            int statW = (LeftW - pill.Width) / 3;
+            int statW = (LeftW - 200) / 3;
             line.Controls.Add(Stat("Entradas", statEntradas, statW));
             line.Controls.Add(Stat("Desglose", statDesglose, statW));
             line.Controls.Add(Stat("Diferencia", statDif, statW));
@@ -174,8 +174,8 @@ namespace CorteDeCaja
 
         static Panel Stat(string caption, Label value, int width)
         {
-            var p = new Panel { Size = new Size(width, 44), Margin = Padding.Empty };
-            p.Controls.Add(new Label { Text = caption, AutoSize = true, Font = Theme.Small, ForeColor = Theme.Muted, Location = new Point(0, 0) });
+            var p = new Panel { Size = Dpi.Sz(width, 44), Margin = Padding.Empty };
+            p.Controls.Add(new Label { Text = caption, AutoSize = true, Font = Theme.Small, ForeColor = Theme.Muted, Location = Dpi.Pt(0, 0) });
             p.Controls.Add(value);
             return p;
         }
@@ -183,9 +183,9 @@ namespace CorteDeCaja
         static Card MoneyCard(string title, string subtitle, Label total, out TableLayoutPanel rows)
         {
             var card = new Card();
-            var head = new Panel { Size = new Size(LeftW, 44), Margin = Padding.Empty };
-            head.Controls.Add(new Label { Text = title, AutoSize = true, Font = Theme.CardTitle, ForeColor = Theme.Text, Location = new Point(0, 0) });
-            head.Controls.Add(new Label { Text = subtitle, AutoSize = true, Font = Theme.Small, ForeColor = Theme.Muted, Location = new Point(0, 24) });
+            var head = new Panel { Size = Dpi.Sz(LeftW, 44), Margin = Padding.Empty };
+            head.Controls.Add(new Label { Text = title, AutoSize = true, Font = Theme.CardTitle, ForeColor = Theme.Text, Location = Dpi.Pt(0, 0) });
+            head.Controls.Add(new Label { Text = subtitle, AutoSize = true, Font = Theme.Small, ForeColor = Theme.Muted, Location = Dpi.Pt(0, 24) });
             head.Controls.Add(total);
             card.Add(head);
             card.Add(Theme.Separator(LeftW));
@@ -199,8 +199,8 @@ namespace CorteDeCaja
             int r = t.RowCount++;
             t.Controls.Add(new Label
             {
-                Text = label, AutoSize = false, Size = new Size(LabelW, 30), Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft, ForeColor = Theme.Text, Margin = new Padding(0, 4, 8, 4),
+                Text = label, AutoSize = false, Size = Dpi.Sz(LabelW, 30), Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft, ForeColor = Theme.Text, Margin = Dpi.P(0, 4, 8, 4),
             }, 0, r);
             t.Controls.Add(amount, 1, r);
             if (extra != null) t.Controls.Add(extra, 2, r);
@@ -212,8 +212,8 @@ namespace CorteDeCaja
             var col = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Padding.Empty };
 
             var cheques = new Card();
-            var head = new Panel { Size = new Size(RightW, 30), Margin = new Padding(0, 0, 0, 6) };
-            head.Controls.Add(new Label { Text = "Cheques cambiados", AutoSize = true, Font = Theme.CardTitle, ForeColor = Theme.Text, Location = new Point(0, 2) });
+            var head = new Panel { Size = Dpi.Sz(RightW, 30), Margin = Dpi.P(0, 0, 0, 6) };
+            head.Controls.Add(new Label { Text = "Cheques cambiados", AutoSize = true, Font = Theme.CardTitle, ForeColor = Theme.Text, Location = Dpi.Pt(0, 2) });
             head.Controls.Add(lblChequesCount);
             cheques.Add(head);
             SetupGrid();
@@ -221,16 +221,16 @@ namespace CorteDeCaja
             cheques.Add(new Label
             {
                 Text = "Un cheque por línea: número y monto. Para quitar uno, haga clic en ✕.",
-                AutoSize = true, MaximumSize = new Size(RightW, 0), Font = Theme.Small, ForeColor = Theme.Muted, Margin = new Padding(0, 6, 0, 0),
+                AutoSize = true, MaximumSize = new Size(Dpi.S(RightW), 0), Font = Theme.Small, ForeColor = Theme.Muted, Margin = Dpi.P(0, 6, 0, 0),
             });
             col.Controls.Add(cheques);
 
             var sign = new Card { Margin = Padding.Empty };
-            var shead = new Panel { Size = new Size(RightW, 30), Margin = new Padding(0, 0, 0, 6) };
-            shead.Controls.Add(new Label { Text = "Firma del agente", AutoSize = true, Font = Theme.CardTitle, ForeColor = Theme.Text, Location = new Point(0, 2) });
+            var shead = new Panel { Size = Dpi.Sz(RightW, 30), Margin = Dpi.P(0, 0, 0, 6) };
+            shead.Controls.Add(new Label { Text = "Firma del agente", AutoSize = true, Font = Theme.CardTitle, ForeColor = Theme.Text, Location = Dpi.Pt(0, 2) });
             var clear = new LinkLabel
             {
-                Text = "Borrar firma", AutoSize = false, Size = new Size(140, 30), Location = new Point(RightW - 140, 0),
+                Text = "Borrar firma", AutoSize = false, Size = Dpi.Sz(140, 30), Location = Dpi.Pt(RightW - 140, 0),
                 TextAlign = ContentAlignment.MiddleRight, LinkColor = Theme.Accent, ActiveLinkColor = Theme.AccentPressed,
                 LinkBehavior = LinkBehavior.HoverUnderline, TabStop = false,
             };
@@ -260,12 +260,12 @@ namespace CorteDeCaja
             grid.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Theme.ReadOnlyFill, ForeColor = Theme.Muted, Font = Theme.FieldLabel,
-                SelectionBackColor = Theme.ReadOnlyFill, SelectionForeColor = Theme.Muted, Padding = new Padding(6, 6, 6, 6),
+                SelectionBackColor = Theme.ReadOnlyFill, SelectionForeColor = Theme.Muted, Padding = Dpi.P(6, 6, 6, 6),
             };
             grid.DefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.White, ForeColor = Theme.Text, Font = Theme.Body,
-                SelectionBackColor = Theme.AccentSoft, SelectionForeColor = Theme.Text, Padding = new Padding(6, 4, 6, 4),
+                SelectionBackColor = Theme.AccentSoft, SelectionForeColor = Theme.Text, Padding = Dpi.P(6, 4, 6, 4),
             };
             // Size header and rows from the font; fixed pixel heights don't follow display scaling.
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
@@ -328,14 +328,14 @@ namespace CorteDeCaja
         // ── Footer: tools on the left, print and save on the right ──
         Control BuildFooter()
         {
-            var card = new Card { Padding = new Padding(12, 10, 12, 10), Margin = new Padding(0, 12, 0, 12) };
-            var bar = new Panel { Size = new Size(CardPadX * 4 + LeftW + Gap + RightW - 24, 36), Margin = Padding.Empty };
+            var card = new Card { Padding = Dpi.P(12, 10, 12, 10), Margin = Dpi.P(0, 12, 0, 12) };
+            var bar = new Panel { Size = Dpi.Sz(CardPadX * 4 + LeftW + Gap + RightW - 24, 36), Margin = Padding.Empty };
 
             var right = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Right, Margin = Padding.Empty };
             UiButton B(FlowLayoutPanel p, string text, ButtonKind kind, string glyph, EventHandler click)
             {
                 var b = new UiButton(text, kind, glyph);
-                b.Margin = p == right ? new Padding(8, 0, 0, 0) : new Padding(0, 0, 4, 0);
+                b.Margin = p == right ? Dpi.P(8, 0, 0, 0) : Dpi.P(0, 0, 4, 0);
                 b.Click += click;
                 p.Controls.Add(b);
                 return b;

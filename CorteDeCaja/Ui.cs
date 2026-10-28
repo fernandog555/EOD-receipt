@@ -6,6 +6,27 @@ using System.Windows.Forms;
 
 namespace CorteDeCaja
 {
+    /// <summary>
+    /// The main window does its own DPI scaling: .NET Framework's auto-scaling scales Padding and Margin of nested
+    /// containers several times over. Every size in the main window is written at 100% and passed through here once.
+    /// </summary>
+    static class Dpi
+    {
+        public static readonly float K = ReadK();
+
+        static float ReadK()
+        {
+            try { using (var g = Graphics.FromHwnd(IntPtr.Zero)) return Math.Max(1f, g.DpiX / 96f); }
+            catch { return 1f; }
+        }
+
+        public static int S(int v) => (int)Math.Round(v * K);
+        public static Padding P(int all) => new Padding(S(all));
+        public static Padding P(int l, int t, int r, int b) => new Padding(S(l), S(t), S(r), S(b));
+        public static Size Sz(int w, int h) => new Size(S(w), S(h));
+        public static Point Pt(int x, int y) => new Point(S(x), S(y));
+    }
+
     /// <summary>Colors and fonts shared by the whole window, so every control draws from one palette.</summary>
     static class Theme
     {
@@ -58,7 +79,7 @@ namespace CorteDeCaja
         {
             g.Clear(c.Parent?.BackColor ?? Page);
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            float k = c.DeviceDpi / 96f, w = borderWidth * k;
+            float k = Dpi.K, w = borderWidth * k;
             var r = new RectangleF(w / 2, w / 2, c.Width - w - 0.5f, c.Height - w - 0.5f);
             using (var path = Round(r, radius * k))
             using (var b = new SolidBrush(fill))
@@ -73,7 +94,7 @@ namespace CorteDeCaja
             new Label { Text = text, AutoSize = true, Font = font, ForeColor = color, Margin = margin };
 
         public static Panel Separator(int width) =>
-            new Panel { Size = new Size(width, 1), BackColor = Border, Margin = new Padding(0, 6, 0, 8) };
+            new Panel { Size = new Size(Dpi.S(width), 1), BackColor = Border, Margin = Dpi.P(0, 6, 0, 8) };
 
         // Windows 11: paint the title bar in the page color so the window reads as one surface. Ignored on Windows 10.
         [DllImport("dwmapi.dll")]
@@ -98,8 +119,8 @@ namespace CorteDeCaja
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             BackColor = Theme.Card;
-            Padding = new Padding(16, 12, 16, 14);
-            Margin = new Padding(0, 0, 0, 12);
+            Padding = Dpi.P(16, 12, 16, 14);
+            Margin = Dpi.P(0, 0, 0, 12);
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             ColumnCount = 1;
@@ -121,9 +142,9 @@ namespace CorteDeCaja
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             BackColor = Color.White;
-            Size = new Size(width, height);
-            Padding = new Padding(2);
-            Margin = new Padding(0);
+            Size = Dpi.Sz(width, height);
+            Padding = Dpi.P(2);
+            Margin = Dpi.P(0);
             inner.Dock = DockStyle.Fill;
             Controls.Add(inner);
         }
@@ -147,12 +168,12 @@ namespace CorteDeCaja
             Box = box;
             money = box is MoneyBox;
             Cursor = Cursors.IBeam;
-            Margin = new Padding(0, 4, 8, 4);
+            Margin = Dpi.P(0, 4, 8, 4);
             // Room on the left for the "$" sign in amount fields.
-            Padding = new Padding(money ? 24 : 10, 6, 10, 6);
+            Padding = Dpi.P(money ? 24 : 10, 6, 10, 6);
             box.BorderStyle = BorderStyle.None;
             box.Margin = Padding.Empty;
-            Width = width;
+            Width = Dpi.S(width);
             Controls.Add(box);
 
             box.GotFocus += (s, e) => Invalidate();
@@ -205,8 +226,8 @@ namespace CorteDeCaja
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
             TabStop = true;
             Cursor = Cursors.Hand;
-            Width = width;
-            Margin = new Padding(0, 4, 12, 4);
+            Width = Dpi.S(width);
+            Margin = Dpi.P(0, 4, 12, 4);
         }
 
         public DateTime Value
@@ -226,7 +247,7 @@ namespace CorteDeCaja
         protected override void OnFontChanged(EventArgs e) { base.OnFontChanged(e); FitHeight(); }
         protected override void OnParentChanged(EventArgs e) { base.OnParentChanged(e); FitHeight(); }
         protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); FitHeight(); }
-        void FitHeight() => Height = TextRenderer.MeasureText("Ág", Font).Height + LogicalToDeviceUnits(12) + 1;
+        void FitHeight() => Height = TextRenderer.MeasureText("Ág", Font).Height + Dpi.S(12) + 1;
 
         protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hover = true; Invalidate(); }
         protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = false; Invalidate(); }
@@ -259,7 +280,7 @@ namespace CorteDeCaja
             drop = new ToolStripDropDown { Padding = Padding.Empty, DropShadowEnabled = true };
             drop.Items.Add(new ToolStripControlHost(cal) { Margin = Padding.Empty, Padding = Padding.Empty, AutoSize = false, Size = cal.Size });
             drop.Closed += (s, e) => { var d = (ToolStripDropDown)s; BeginInvoke((Action)d.Dispose); Invalidate(); };
-            drop.Show(this, new Point(0, Height + 2));
+            drop.Show(this, new Point(0, Height + Dpi.S(2)));
         }
 
         protected override void OnPaintBackground(PaintEventArgs e) { }
@@ -269,7 +290,7 @@ namespace CorteDeCaja
             var g = e.Graphics;
             var border = Focused ? Theme.Accent : hover ? Theme.BorderStrong : Theme.Border;
             Theme.PaintBox(g, this, Color.White, border, 6, Focused ? 1.6f : 1f);
-            int pad = LogicalToDeviceUnits(10), icon = LogicalToDeviceUnits(22);
+            int pad = Dpi.S(10), icon = Dpi.S(22);
             var text = date.ToString("ddd", Es).TrimEnd('.');
             text = char.ToUpper(text[0], Es) + text.Substring(1) + "  " + Fmt.Date(date);
             TextRenderer.DrawText(g, text, Font, new Rectangle(pad, 0, Width - pad - icon - pad, Height), Theme.Text,
@@ -300,16 +321,16 @@ namespace CorteDeCaja
             Cursor = Cursors.Hand;
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            Padding = new Padding(14, 7, 16, 7);
-            Margin = new Padding(0, 0, 8, 0);
+            Padding = Dpi.P(14, 7, 16, 7);
+            Margin = Dpi.P(0, 0, 8, 0);
         }
 
-        int GlyphWidth => glyph == null ? 0 : TextRenderer.MeasureText(glyph, Theme.Icons, Size.Empty, TextFormatFlags.NoPadding).Width + LogicalToDeviceUnits(8);
+        int GlyphWidth => glyph == null ? 0 : TextRenderer.MeasureText(glyph, Theme.Icons, Size.Empty, TextFormatFlags.NoPadding).Width + Dpi.S(8);
 
         public override Size GetPreferredSize(Size proposed)
         {
             var t = TextRenderer.MeasureText(Text, Font, Size.Empty, TextFormatFlags.NoPadding);
-            return new Size(t.Width + GlyphWidth + Padding.Horizontal, Math.Max(t.Height, LogicalToDeviceUnits(18)) + Padding.Vertical + 2);
+            return new Size(t.Width + GlyphWidth + Padding.Horizontal, Math.Max(t.Height, Dpi.S(18)) + Padding.Vertical + 2);
         }
 
         protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hover = true; Invalidate(); }
@@ -339,7 +360,7 @@ namespace CorteDeCaja
             Theme.PaintBox(g, this, fill, border, 7);
             if (Focused && ShowFocusCues)
             {
-                float k = DeviceDpi / 96f;
+                float k = Dpi.K;
                 using (var path = Theme.Round(new RectangleF(2.5f * k, 2.5f * k, Width - 5.5f * k, Height - 5.5f * k), 5 * k))
                 using (var pen = new Pen(kind == ButtonKind.Primary ? Color.White : Theme.Accent, 1.5f * k) { DashStyle = DashStyle.Dot })
                     g.DrawPath(pen, path);
@@ -386,7 +407,7 @@ namespace CorteDeCaja
             }
             Theme.PaintBox(e.Graphics, this, fill, fill, 8);
             var t = TextRenderer.MeasureText(Text, Font, Size.Empty, TextFormatFlags.NoPadding);
-            int iw = LogicalToDeviceUnits(26), x = (Width - t.Width - iw) / 2;
+            int iw = Dpi.S(26), x = (Width - t.Width - iw) / 2;
             TextRenderer.DrawText(e.Graphics, icon, Theme.Icons, new Rectangle(x, 0, iw, Height), fore,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
             TextRenderer.DrawText(e.Graphics, Text, Font, new Rectangle(x + iw, 0, t.Width + 2, Height), fore,
